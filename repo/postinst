@@ -1,0 +1,19 @@
+#!/bin/sh
+set -e
+ROOT=/var/jb
+ETC="$ROOT/etc/khoangcachantoan"
+APP="$ROOT/Applications/KhoangCachAnToan.app"
+JBCTL=""
+for c in "$ROOT/basebin/jbctl" "$ROOT/usr/bin/jbctl"; do
+  if [ -x "$c" ]; then JBCTL="$c"; break; fi
+done
+if [ -n "$JBCTL" ] && [ -f "$ETC/cdhashes" ]; then
+  while IFS= read -r h; do
+    [ -z "$h" ] && continue
+    "$JBCTL" trustcache add "$h" 2>/dev/null || true
+  done < "$ETC/cdhashes"
+fi
+for u in uicache "$ROOT/usr/bin/uicache"; do
+  if command -v "$u" >/dev/null 2>&1; then "$u" -p "$APP" 2>/dev/null || true; break; fi
+done
+exit 0

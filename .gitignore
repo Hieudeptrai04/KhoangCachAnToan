@@ -1,0 +1,8 @@
+*.deb
+packages/
+.theos/
+obj/
+app/Resources/*.mlmodelc
+site/
+out/
+combined/

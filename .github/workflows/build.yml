@@ -1,0 +1,174 @@
+name: Build KhoangCachAnToan
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "repo/**"
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-main
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      THEOS: /Users/runner/theos
+      THEOS_PACKAGE_SCHEME: rootless
+      SDK_VERSION: "16.5"
+      SDK_RELEASE: "master-146e41f"
+      MODEL_URL: https://ml-assets.apple.com/coreml/models/Image/ObjectDetection/YOLOv3Tiny/YOLOv3TinyInt8LUT.mlmodel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Init build log
+        run: |
+          : > /tmp/build.log
+          echo "=== build $(date) sha=${GITHUB_SHA} ===" >> /tmp/build.log
+
+      - name: Install ldid + dpkg
+        run: |
+          exec > >(tee -a /tmp/build.log) 2>&1
+          brew install ldid dpkg
+
+      - name: Cache Theos + SDK
+        id: cache-theos
+        uses: actions/cache@v4
+        with:
+          path: /Users/runner/theos
+          key: theos-sdk${{ env.SDK_VERSION }}-${{ env.SDK_RELEASE }}
+
+      - name: Install Theos + SDK
+        if: steps.cache-theos.outputs.cache-hit != 'true'
+        run: |
+          exec > >(tee -a /tmp/build.log) 2>&1
+          set -euo pipefail
+          git clone --recursive https://github.com/theos/theos.git "$THEOS"
+          mkdir -p "$THEOS/sdks"
+          curl -fSL "https://github.com/theos/sdks/releases/download/${SDK_RELEASE}/iPhoneOS${SDK_VERSION}.sdk.tar.xz" -o /tmp/sdk.tar.xz
+          tar -xf /tmp/sdk.tar.xz -C "$THEOS/sdks/"
+          test -f "$THEOS/makefiles/common.mk"
+          test -d "$THEOS/sdks/iPhoneOS${SDK_VERSION}.sdk"
+
+      - name: Cache Core ML model
+        uses: actions/cache@v4
+        with:
+          path: /Users/runner/mlcache
+          key: coreml-yolov3tiny-int8lut-v1
+
+      - name: Fetch + compile Core ML model
+        run: |
+          exec > >(tee -a /tmp/build.log) 2>&1
+          set -euo pipefail
+          ML=/Users/runner/mlcache
+          mkdir -p "$ML"
+          [ -s "$ML/YOLOv3TinyInt8LUT.mlmodel" ] || curl -fSL "$MODEL_URL" -o "$ML/YOLOv3TinyInt8LUT.mlmodel"
+          rm -rf app/Resources/YOLOv3TinyInt8LUT.mlmodelc
+          xcrun coremlcompiler compile "$ML/YOLOv3TinyInt8LUT.mlmodel" app/Resources/
+          test -d app/Resources/YOLOv3TinyInt8LUT.mlmodelc
+
+      - name: Build app
+        run: |
+          exec > >(tee -a /tmp/build.log) 2>&1
+          set -euo pipefail
+          cd app
+          rm -rf packages .theos obj
+          make package FINALPACKAGE=1 ARCHS=arm64
+          ls -lh packages/
+
+      - name: Repack (cdhash + postinst + control)
+        run: |
+          exec > >(tee -a /tmp/build.log) 2>&1
+          set -euo pipefail
+          VERSION=$(grep '^Version:' app/control | awk '{print $2}')
+          DEB=$(ls app/packages/*.deb | head -1)
+          rm -rf combined && mkdir -p combined
+          dpkg-deb -R "$DEB" combined
+          APPDIR=combined/var/jb/Applications/KhoangCachAnToan.app
+          test -f "$APPDIR/KhoangCachAnToan"
+          test -d "$APPDIR/YOLOv3TinyInt8LUT.mlmodelc"
+          test -f "$APPDIR/legal.json"
+          mkdir -p combined/var/jb/etc/khoangcachantoan
+          ldid -h "$APPDIR/KhoangCachAnToan" | awk -F= '/^CDHash=/ {print $2}' > combined/var/jb/etc/khoangcachantoan/cdhashes
+          test -s combined/var/jb/etc/khoangcachantoan/cdhashes
+          cat combined/var/jb/etc/khoangcachantoan/cdhashes
+          cp repo/postinst combined/DEBIAN/postinst
+          chmod 0755 combined/DEBIAN/postinst
+          cp app/control combined/DEBIAN/control
+          mkdir -p out
+          dpkg-deb -Zxz -b combined "out/KhoangCachAnToan_${VERSION}_iphoneos-arm64.deb"
+          ls -lh out/
+          find combined -type f | sort
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KhoangCachAnToan-deb
+          path: out/*.deb
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(grep '^Version:' app/control | awk '{print $2}')
+          TAG="v${VERSION}-${GITHUB_SHA::7}"
+          gh release create "$TAG" out/*.deb \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Khoang Cach An Toan ${VERSION} (${GITHUB_SHA::7})" \
+            --notes "Build tu ${GITHUB_SHA}. Cai qua Sileo: https://hieudeptrai04.github.io/KhoangCachAnToan/"
+
+      - name: Publish to Sileo repo (gh-pages)
+        if: success() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          rm -rf site
+          if git ls-remote --exit-code --heads "$REMOTE" gh-pages >/dev/null 2>&1; then
+            git clone --depth 1 --branch gh-pages "$REMOTE" site
+          else
+            mkdir site
+            git -C site init -q
+            git -C site checkout -q --orphan gh-pages
+            git -C site remote add origin "$REMOTE"
+          fi
+          mkdir -p site/pool/main
+          cp out/*.deb site/pool/main/
+          cp repo/depiction.json repo/depiction.html repo/icon.png site/
+          cp app/Resources/legal.json site/legal.json
+          touch site/.nojekyll
+          bash repo/make-index.sh site
+          cd site
+          git config user.name "CI"
+          git config user.email "ci@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing new to publish"
+          else
+            git commit -q -m "publish $(basename "$(ls ../out/*.deb | head -1)")"
+            git push origin HEAD:gh-pages
+          fi
+          echo "Sileo source: https://hieudeptrai04.github.io/KhoangCachAnToan/"
+
+      - name: On failure - publish build.log
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          tail -200 /tmp/build.log
+          [ -s /tmp/build.log ] || echo "(empty)" > /tmp/build.log
+          TAG="debug-fail-${GITHUB_SHA::7}-${GITHUB_RUN_ID}"
+          gh release create "$TAG" /tmp/build.log --repo "$GITHUB_REPOSITORY" \
+            --title "DEBUG fail ${GITHUB_SHA::7}" --notes "Auto-uploaded failure log" --prerelease || true

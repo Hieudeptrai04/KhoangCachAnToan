@@ -1,0 +1,23 @@
+{
+  "minVersion": "0.1",
+  "class": "DepictionTabView",
+  "tintColor": "#30D158",
+  "tabs": [
+    {
+      "tabname": "Chi tiết",
+      "class": "DepictionStackView",
+      "views": [
+        { "class": "DepictionSubheaderView", "title": "Khoảng Cách An Toàn", "useBoldText": true, "useBottomMargin": false },
+        { "class": "DepictionMarkdownView", "markdown": "Đo khoảng cách tới xe phía trước bằng camera sau và đối chiếu Thông tư 38/2024/TT-BGTVT (35 / 55 / 70 / 100 m theo tốc độ). Mở app là đo ngay.", "useSpacing": true },
+        { "class": "DepictionSeparatorView" },
+        { "class": "DepictionHeaderView", "title": "Tính năng" },
+        { "class": "DepictionMarkdownView", "markdown": "- Đo liên tục, cảnh báo 3 màu, rung + bíp + giọng đọc\n- Tự tra ngưỡng theo tốc độ GPS\n- Chế độ mưa / sương mù\n- Hiệu chỉnh theo xe của bạn\n- Không đăng nhập, không gửi dữ liệu", "useSpacing": true },
+        { "class": "DepictionSeparatorView" },
+        { "class": "DepictionHeaderView", "title": "Yêu cầu" },
+        { "class": "DepictionMarkdownView", "markdown": "- iOS 15 – 16, jailbreak rootless (Dopamine 2)\n- Giá đỡ điện thoại trên kính lái\n- Bật GPS", "useSpacing": true },
+        { "class": "DepictionSeparatorView" },
+        { "class": "DepictionMarkdownView", "markdown": "Ứng dụng chỉ hỗ trợ ước lượng, không phải bằng chứng pháp lý.", "useSpacing": true }
+      ]
+    }
+  ]
+}

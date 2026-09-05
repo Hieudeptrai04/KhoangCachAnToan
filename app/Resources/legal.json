@@ -1,0 +1,23 @@
+{
+  "version": "2026-09-05",
+  "source": "Điều 11 Thông tư 38/2024/TT-BGTVT (hiệu lực 01/01/2025)",
+  "legal_from_kmh": 60,
+  "brackets": [
+    { "v_max": 60,  "min_m": 35  },
+    { "v_max": 80,  "min_m": 55  },
+    { "v_max": 100, "min_m": 70  },
+    { "v_max": 120, "min_m": 100 }
+  ],
+  "below_legal": { "rule": "driver_discretion", "advisory_seconds": 2.0 },
+  "adverse_factor_default": 1.5,
+  "penalties": [
+    { "context": "normal",   "fine_vnd": [800000, 1000000],    "points": 0,  "ref": "Điều 6 Nghị định 168/2024/NĐ-CP" },
+    { "context": "highway",  "fine_vnd": [4000000, 6000000],   "points": 2,  "ref": "Điều 6 Nghị định 168/2024/NĐ-CP" },
+    { "context": "accident", "fine_vnd": [20000000, 22000000], "points": 10, "ref": "Điều 6 Nghị định 168/2024/NĐ-CP" }
+  ],
+  "notes": [
+    "27/8/2026: CSGT bắt đầu xử phạt lỗi khoảng cách trên cao tốc Pháp Vân – Nghi Sơn bằng camera.",
+    "01/9/2026: Chính phủ yêu cầu rà soát quy định khoảng cách và mức phạt, báo cáo trong tháng 9/2026."
+  ],
+  "disclaimer": "Ứng dụng chỉ ước lượng bằng camera điện thoại, không phải thiết bị đo được kiểm định và không phải bằng chứng pháp lý. Người lái chịu trách nhiệm quan sát và giữ khoảng cách an toàn."
+}
