@@ -1,0 +1,8 @@
+Origin: Khoang Cach An Toan
+Label: Khoang Cach An Toan
+Suite: stable
+Version: 0.1.0
+Codename: ios
+Architectures: iphoneos-arm64
+Components: main
+Description: Do khoang cach xe phia truoc bang camera, doi chieu Thong tu 38/2024
