@@ -28,6 +28,7 @@
 @property (nonatomic, assign) NSUInteger lastInLaneCount;
 @property (nonatomic, copy) NSString *lastLeaderText;
 @property (nonatomic, assign) BOOL lastLeaderLost;
+@property (nonatomic, assign) CFAbsoluteTime lastHudTextRefresh;
 @end
 
 @implementation KCMainViewController
@@ -160,11 +161,13 @@
     [self.view.layer insertSublayer:self.previewLayer atIndex:0];
 
     // Khung bao được vẽ qua đúng phép biến đổi của preview layer (resizeAspectFill).
+    // Tên Objective-C của hàm này là rectForMetadataOutputRectOfInterest:
+    // (trong Swift là layerRectConverted(fromMetadataOutputRect:)).
     __weak typeof(self) weakSelf = self;
     self.overlay.rectConverter = ^CGRect(CGRect nrect) {
         AVCaptureVideoPreviewLayer *layer = weakSelf.previewLayer;
         if (!layer) return CGRectZero;
-        return [layer layerRectConvertedFromMetadataOutputRect:nrect];
+        return [layer rectForMetadataOutputRectOfInterest:nrect];
     };
     // Vùng quan tâm kênh xa: đổi từ hệ Vision (gốc dưới-trái) sang quy ước app (gốc trên-trái).
     CGRect roi = self.detector.farRegionOfInterest;
@@ -219,8 +222,14 @@
         } else {
             self.lastLeaderText = @"—";
         }
-        [self refreshDebugText];
-        [self refreshBadges];
+        // Khung bao vẽ lại mỗi lần suy luận; phần chữ chỉ 4 lần/giây
+        // (dựng lại nhãn huy hiệu ở 15 Hz tốn CPU vô ích).
+        CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+        if (now - self.lastHudTextRefresh >= 0.25) {
+            self.lastHudTextRefresh = now;
+            [self refreshDebugText];
+            [self refreshBadges];
+        }
     });
 }
 
