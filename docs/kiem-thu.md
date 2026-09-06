@@ -135,6 +135,38 @@ sudo rm -f /var/mobile/Documents/KhoangCachAnToan/legal.json
 
 Lần mở thứ nhất app tải bản mới về, lần mở thứ hai mới áp dụng. Vào màn Luật xem dòng "Nguồn tệp" đổi thành "tải về" và phiên bản là ngày mới.
 
+## Phase 4 — hoàn thiện (1.0.0)
+
+### Trong nhà
+
+| # | Việc kiểm | Cách làm | Đạt khi | Kết quả |
+|---|---|---|---|---|
+| 4.1 | Hướng dẫn lần đầu | gỡ app, cài lại, mở lên | hiện 3 trang hướng dẫn, vuốt qua được, có nút "Tôi đã hiểu, bắt đầu" | |
+| 4.2 | Xin quyền | ở màn hướng dẫn | hiện hộp thoại xin quyền camera và vị trí (nếu iOS cho phép) | |
+| 4.3 | Lần mở thứ hai | thoát rồi mở lại | **vào thẳng camera**, không còn hướng dẫn | |
+| 4.4 | Bật ghi CSV | ⚙ → Ghi tệp CSV mỗi chuyến | ⚙ → Các tệp đã ghi thấy tệp mới | |
+| 4.5 | Nội dung CSV | lấy tệp về bằng SFTP | có dòng tiêu đề và các dòng số liệu, dấu phẩy ngăn cột | |
+| 4.6 | Đổi camera | tắt "Ưu tiên tele", mở lại app | dòng gỡ lỗi ghi `wide` thay vì `tele` | |
+| 4.7 | Không crash | để chạy **30 phút** liên tục | không thoát, bộ nhớ dưới 250 MB, máy ấm chứ không bỏng | |
+
+### Thực địa (bắt buộc trước khi coi là xong)
+
+Người lái tập trung lái. Một người khác cầm máy quan sát, hoặc bật ghi CSV rồi xem lại sau.
+
+| # | Việc kiểm | Đạt khi | Kết quả |
+|---|---|---|---|
+| 4.8 | 20 phút đường trường hoặc cao tốc | không thoát app, không treo hình | |
+| 4.9 | Đổi mốc đúng | qua 60, 80, 100 km/h thì ngưỡng đổi đúng bảng, không nhấp nháy | |
+| 4.10 | Xe tạt đầu | bắt được trong dưới 0,5 giây | |
+| 4.11 | Không báo giả | đường trống không kêu | |
+| 4.12 | Âm thanh | trộn được với nhạc hoặc chỉ đường, không cắt | |
+| 4.13 | Nhiệt độ | sau 20 phút máy không quá nóng, không tự giảm tốc độ xử lý | |
+| 4.14 | Phát hiện tầm xa | ban ngày bắt được xe cùng làn tới khoảng 60 m ổn định | |
+
+### Điền kết quả vào README
+
+Sau khi đo tĩnh xong, điền bảng "Độ chính xác đã đo" trong README với 5 mốc 5 / 10 / 15 / 20 / 30 m và sai số phần trăm.
+
 ## Ghi chú khi báo cáo
 
 - Chụp màn hình lúc có xe trong khung.
