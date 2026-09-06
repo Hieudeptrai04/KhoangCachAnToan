@@ -2,6 +2,19 @@
 
 Định dạng phiên bản: `MAJOR.MINOR.PATCH`. Mỗi bản phát hành có tag `v<ver>-<sha7>` trên GitHub và một file `.deb` trong kho Sileo.
 
+## 0.4.0 — 2026-09-06 (Phase 3: luật và cảnh báo)
+
+- **Tốc độ từ GPS**, làm mượt 1 giây. Dưới 5 km/h hoặc chưa khoá được GPS thì phần luật bị ẩn, chỉ còn khoảng cách.
+- **Tra ngưỡng theo Thông tư 38/2024** từ `legal.json`, không có số nào nằm cứng trong mã. Dưới 60 km/h luật không cho số cứng nên app hiện khoảng cách khuyến nghị đi hết 2 giây và ghi rõ nhãn "khuyến nghị".
+- Đổi mốc tốc độ có độ trễ: phải vượt mốc 2 km/h và giữ 1 giây thì ngưỡng mới đổi, nên số không nhấp nháy khi chạy quanh 60, 80, 100 hay 120 km/h.
+- **Trạng thái ba màu** trên dải đáy và trên khung bao xe dẫn đầu: xanh khi cách từ 110 % ngưỡng trở lên, vàng khi sát ngưỡng, đỏ nhấp nháy khi dưới ngưỡng.
+- **Cảnh báo khi đỏ**: rung, tiếng bíp 880 Hz tự tổng hợp trong app, và giọng đọc tiếng Việt. Tối đa một lần mỗi 3 giây. Phiên âm thanh dùng chế độ trộn nên không cắt nhạc hay ứng dụng dẫn đường. Bật tắt riêng từng loại, có nút nghe thử.
+- **Chế độ thời tiết xấu**: nút trên HUD nhân ngưỡng với hệ số cấu hình, mặc định 1,5 lần, nhãn đổi thành "khuyến nghị (mưa/sương mù)".
+- **Màn Luật**: bảng khoảng cách tối thiểu, ba mức phạt theo Nghị định 168/2024 kèm số điểm bị trừ, bối cảnh, phiên bản số liệu đang dùng và miễn trừ trách nhiệm.
+- **Cập nhật số liệu từ xa**: app kiểm tra bản mới tối đa một lần mỗi 7 ngày. Bản tải về phải qua xác thực cấu trúc mới được ghi đè, hỏng thì giữ nguyên bản cũ, và mốc thời gian được ghi trước khi tải nên mất mạng cũng không thử lại liên tục.
+- **Tự kiểm tra bảng ngưỡng** chạy mỗi lần mở app và ghi PASS/FAIL vào nhật ký: 11 mốc tốc độ, hệ số thời tiết xấu, cờ quá tốc độ, độ trễ đổi mốc, và trường hợp JSON hỏng phải bị từ chối.
+- Sửa từ kết quả rà soát: script SSH nay tự thêm đường dẫn của jailbreak vào PATH nên tìm được `dpkg`, `tail`, `head`; gói có thêm `prerm` để gỡ đăng ký icon khi gỡ cài đặt; kho Sileo có icon riêng; chạy lại workflow trên cùng một commit không còn làm hỏng bước phát hành.
+
 ## 0.3.0 — 2026-09-06 (Phase 2: đo khoảng cách)
 
 - **Đo khoảng cách thật**, thay số giả trên HUD. Hai phép đo độc lập chạy song song rồi hợp nhất theo nghịch phương sai: một theo bề rộng xe trong ảnh, một theo vị trí cạnh đáy xe trên mặt đường. Sai số của từng phép được ước lượng từ sai số vị trí cạnh khung bao, quy đổi theo hệ số thu nhỏ của đúng kênh đã phát hiện ra xe đó.

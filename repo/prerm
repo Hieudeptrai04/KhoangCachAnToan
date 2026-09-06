@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+ROOT=/var/jb
+APP="$ROOT/Applications/KhoangCachAnToan.app"
+# Bo dang ky bundle khoi LaunchServices, neu khong icon chet van con tren SpringBoard.
+for u in uicache "$ROOT/usr/bin/uicache"; do
+  if command -v "$u" >/dev/null 2>&1; then "$u" -u "$APP" 2>/dev/null || true; break; fi
+done
+rm -f "$ROOT/etc/khoangcachantoan/cdhashes"
+exit 0

@@ -40,6 +40,12 @@
 /// Hiện khung vùng quan tâm của kênh xa.
 @property (nonatomic, assign) BOOL showsFarRegion;
 
+#pragma mark - Cảnh báo (FR-4)
+
+@property (nonatomic, assign) BOOL alertBeep;      // tiếng bíp
+@property (nonatomic, assign) BOOL alertHaptic;    // rung
+@property (nonatomic, assign) BOOL alertSpeech;    // giọng đọc tiếng Việt
+
 /// Ghi ngay xuống đĩa (cũng tự ghi sau mỗi lần đặt giá trị).
 - (void)save;
 /// Đưa mọi giá trị về mặc định.

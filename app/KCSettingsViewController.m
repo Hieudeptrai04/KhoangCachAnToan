@@ -1,6 +1,9 @@
 #import "KCSettingsViewController.h"
 #import "KCSettings.h"
 #import "KCMotion.h"
+#import "KCAlertEngine.h"
+#import "KCLegalRules.h"
+#import "KCLegalViewController.h"
 #import "KCCommon.h"
 #import "KCLog.h"
 #import <math.h>
@@ -173,6 +176,32 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
                setter:^(double v){ s.adverseFactor = v; [weakSelf changed]; }],
     ]];
 
+    // --- Cảnh báo ---
+    [self.sectionTitles addObject:@"Cảnh báo khi bám quá gần"];
+    [self.sections addObject:@[
+        [self toggle:@"Tiếng bíp"
+              getter:^BOOL{ return s.alertBeep; } setter:^(BOOL v){ s.alertBeep = v; [weakSelf changed]; }],
+        [self toggle:@"Rung"
+              getter:^BOOL{ return s.alertHaptic; } setter:^(BOOL v){ s.alertHaptic = v; [weakSelf changed]; }],
+        [self toggle:@"Giọng đọc tiếng Việt"
+              getter:^BOOL{ return s.alertSpeech; } setter:^(BOOL v){ s.alertSpeech = v; [weakSelf changed]; }],
+        [self button:@"Nghe thử" detail:nil action:^{ [weakSelf.alertEngine testAlert]; }],
+    ]];
+
+    // --- Luật ---
+    [self.sectionTitles addObject:@"Căn cứ pháp lý"];
+    [self.sections addObject:@[
+        [self button:@"Bảng khoảng cách và mức phạt"
+              detail:^NSString *{
+                  KCLegalRules *r = [KCLegalRules shared];
+                  return [NSString stringWithFormat:@"số liệu %@ (%@)", r.version ?: @"—", r.originLabel ?: @"—"];
+              }
+              action:^{ [weakSelf showLegal]; }],
+        [self button:@"Tự kiểm tra bảng ngưỡng"
+              detail:^NSString *{ return @"ghi kết quả PASS/FAIL vào log.txt"; }
+              action:^{ [weakSelf runSelfTest]; }],
+    ]];
+
     // --- Đặt lại ---
     [self.sectionTitles addObject:@""];
     [self.sections addObject:@[
@@ -225,6 +254,18 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
     }]];
     [ac addAction:[UIAlertAction actionWithTitle:@"Huỷ" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:ac animated:YES completion:nil];
+}
+
+- (void)showLegal {
+    KCLegalViewController *vc = [[KCLegalViewController alloc] init];
+    vc.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:vc animated:YES completion:nil];
+}
+
+- (void)runSelfTest {
+    NSInteger failed = [[KCLegalRules shared] runSelfTest];
+    [self toast:failed == 0 ? @"Tất cả phép thử đều đạt. Chi tiết trong log.txt."
+                            : [NSString stringWithFormat:@"%ld phép thử KHÔNG đạt. Xem log.txt.", (long)failed]];
 }
 
 - (void)confirmReset {

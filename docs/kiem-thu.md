@@ -22,8 +22,10 @@ Máy test: iPhone X (iPhone10,3), iOS 16.7.11, Dopamine 2 rootless.
 Nếu app tắt ngay khi mở sau khi khởi động lại máy, chạy trên iPhone:
 
 ```sh
-xargs -rn1 /var/jb/basebin/jbctl trustcache add < /var/jb/etc/khoangcachantoan/cdhashes
+sudo xargs -n1 /var/jb/basebin/jbctl trustcache add < /var/jb/etc/khoangcachantoan/cdhashes
 ```
+
+Phải chạy bằng quyền root, `jbctl trustcache` từ chối khi không phải root.
 
 ## Phase 0 — khung xương (0.1.1)
 

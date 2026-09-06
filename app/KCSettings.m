@@ -14,6 +14,9 @@ static NSString *const kKeyMaxInferenceFPS = @"maxInferenceFPS";
 static NSString *const kKeyAdverseFactor = @"adverseFactor";
 static NSString *const kKeyShowsGuides = @"showsGuides";
 static NSString *const kKeyShowsFarRegion = @"showsFarRegion";
+static NSString *const kKeyAlertBeep = @"alertBeep";
+static NSString *const kKeyAlertHaptic = @"alertHaptic";
+static NSString *const kKeyAlertSpeech = @"alertSpeech";
 
 @interface KCSettings ()
 @property (nonatomic, strong) NSMutableDictionary *store;
@@ -56,6 +59,9 @@ static NSString *const kKeyShowsFarRegion = @"showsFarRegion";
     _adverseFactor = [self doubleFor:kKeyAdverseFactor fallback:1.5];
     _showsGuides = [self boolFor:kKeyShowsGuides fallback:YES];
     _showsFarRegion = [self boolFor:kKeyShowsFarRegion fallback:NO];
+    _alertBeep = [self boolFor:kKeyAlertBeep fallback:YES];
+    _alertHaptic = [self boolFor:kKeyAlertHaptic fallback:YES];
+    _alertSpeech = [self boolFor:kKeyAlertSpeech fallback:YES];
     self.loading = NO;
 }
 
@@ -113,6 +119,9 @@ static NSString *const kKeyShowsFarRegion = @"showsFarRegion";
 - (void)setAdverseFactor:(double)v      { _adverseFactor = v;      [self set:kKeyAdverseFactor number:v]; }
 - (void)setShowsGuides:(BOOL)v          { _showsGuides = v;        [self set:kKeyShowsGuides flag:v]; }
 - (void)setShowsFarRegion:(BOOL)v       { _showsFarRegion = v;     [self set:kKeyShowsFarRegion flag:v]; }
+- (void)setAlertBeep:(BOOL)v            { _alertBeep = v;          [self set:kKeyAlertBeep flag:v]; }
+- (void)setAlertHaptic:(BOOL)v          { _alertHaptic = v;        [self set:kKeyAlertHaptic flag:v]; }
+- (void)setAlertSpeech:(BOOL)v          { _alertSpeech = v;        [self set:kKeyAlertSpeech flag:v]; }
 
 - (double)vehicleWidthForLabel:(NSString *)label {
     NSString *l = label.lowercaseString;

@@ -18,10 +18,10 @@
 | 0 | 0.1.1 | Khung xương: CI, kho Sileo, camera preview ngang, ma trận nội tại, HUD số giả | CI xanh, chờ thử máy |
 | 1 | 0.2.0 | Phát hiện xe (YOLOv3-Tiny, 2 kênh suy luận), chọn xe dẫn đầu, bám theo | CI xanh, chờ thử máy |
 | 2 | 0.3.0 | Ước lượng khoảng cách, hiệu chỉnh h / d_front / k / cân ngang | CI xanh, chờ thử máy |
-| 3 | 0.4.0 | GPS, ngưỡng luật, cảnh báo 3 màu, bíp/rung/giọng, thời tiết xấu, màn Luật | chưa |
+| 3 | 0.4.0 | GPS, ngưỡng luật, cảnh báo 3 màu, bíp/rung/giọng, thời tiết xấu, màn Luật | CI xanh, chờ thử máy |
 | 4 | 1.0.0 | Onboarding, cài đặt đầy đủ, tiết kiệm pin, CSV, kiểm thử đường | chưa |
 
-Bản 0.3.0 đã **đo khoảng cách thật**. Chưa có tốc độ GPS nên chưa tra được ngưỡng theo luật và chưa cảnh báo ba màu; phần đó ở Phase 3.
+Bản 0.4.0 đã đo khoảng cách thật, lấy tốc độ từ GPS, tra ngưỡng theo Thông tư 38/2024 và cảnh báo bằng màu, rung, tiếng bíp và giọng đọc. Còn thiếu so với bản 1.0: màn hướng dẫn lần đầu, ghi nhật ký chuyến đi ra tệp CSV, và kiểm thử thực địa.
 
 ## Yêu cầu
 
@@ -48,8 +48,10 @@ sudo dpkg -i KhoangCachAnToan_<ver>_iphoneos-arm64.deb
 Script postinst tự thêm cdhash vào trustcache và chạy `uicache`. Nếu app tắt ngay khi mở sau khi reboot máy (Dopamine 2 mất trustcache động):
 
 ```sh
-xargs -rn1 /var/jb/basebin/jbctl trustcache add < /var/jb/etc/khoangcachantoan/cdhashes
+sudo xargs -n1 /var/jb/basebin/jbctl trustcache add < /var/jb/etc/khoangcachantoan/cdhashes
 ```
+
+Phải chạy bằng quyền root: `jbctl trustcache` từ chối khi không phải root. Cần Dopamine 2.1 trở lên.
 
 ## Gắn máy
 
@@ -148,6 +150,10 @@ app/                Theos application (Objective-C, UIKit thuần, không storyb
   KCTracker          hành lang làn, chọn xe dẫn đầu, bám theo bằng IoU, chống nhấp nháy
   KCRangeEstimator   đo theo bề rộng xe và theo mặt đường, hợp nhất, lọc Kalman
   KCMotion           góc chúc camera từ trọng lực, lọc thông thấp, offset cân ngang
+  KCLocation         tốc độ từ GPS, làm mượt, ngưỡng đứng yên 5 km/h
+  KCLegalRules       đọc legal.json, tra ngưỡng có độ trễ, cập nhật từ xa, tự kiểm tra
+  KCAlertEngine      bíp tự tổng hợp, rung, giọng đọc, trộn với nhạc, tối đa 1 lần / 3 s
+  KCLegalViewController     màn Luật
   KCSettings         cài đặt lưu thẳng vào plist (app không có container)
   KCSettingsViewController  màn hiệu chỉnh và cài đặt
   KCOverlayView      vẽ khung bao lên preview

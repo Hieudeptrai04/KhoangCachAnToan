@@ -4,6 +4,9 @@
 #import "KCTracker.h"
 #import "KCRangeEstimator.h"
 #import "KCMotion.h"
+#import "KCLocation.h"
+#import "KCLegalRules.h"
+#import "KCAlertEngine.h"
 #import "KCSettings.h"
 #import "KCSettingsViewController.h"
 #import "KCOverlayView.h"
@@ -19,6 +22,8 @@
 @property (nonatomic, strong) KCTracker *tracker;
 @property (nonatomic, strong) KCRangeEstimator *estimator;
 @property (nonatomic, strong) KCMotion *motion;
+@property (nonatomic, strong) KCLocation *location;
+@property (nonatomic, strong) KCAlertEngine *alertEngine;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
 @property (nonatomic, strong) KCOverlayView *overlay;
 @property (nonatomic, strong) KCHUDView *hud;
@@ -37,6 +42,8 @@
 @property (nonatomic, assign) KCRangeResult lastRange;
 @property (nonatomic, assign) CFAbsoluteTime lastRangeTime;
 @property (nonatomic, assign) CFAbsoluteTime lastHudTextRefresh;
+@property (nonatomic, assign) double lastThresholdMeters;
+@property (nonatomic, assign) BOOL lastOverSpeed;
 @end
 
 @implementation KCMainViewController
@@ -56,6 +63,14 @@
 
     self.motion = [[KCMotion alloc] init];
     self.motion.pitchOffsetRadians = s.pitchOffsetRadians;
+
+    self.location = [[KCLocation alloc] init];
+    self.alertEngine = [[KCAlertEngine alloc] init];
+
+    // Nạp bảng luật, tự kiểm tra bảng ngưỡng (mục 10.4), rồi kiểm tra bản mới (tối đa 1 lần / 7 ngày).
+    [[KCLegalRules shared] load];
+    [[KCLegalRules shared] runSelfTest];
+    [[KCLegalRules shared] updateFromServerIfDue];
 
     self.detector = [[KCDetector alloc] init];
     self.detector.delegate = self;
@@ -83,7 +98,7 @@
     [self refreshBadges];
     [self.hud setSpeedKmh:0 valid:NO];
     [self.hud setGapSeconds:0 valid:NO];
-    [self.hud setThresholdText:@"ngưỡng theo luật: cần GPS (bản sau)"];
+    [self.hud setThresholdText:@"đang chờ GPS"];
 
     self.uiTimer = [NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(uiTick) userInfo:nil repeats:YES];
 }
@@ -91,12 +106,14 @@
 - (void)dealloc {
     [_uiTimer invalidate];
     [_motion stop];
+    [_location stop];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self startCameraIfNeeded];
     [self.motion start];
+    [self.location start];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -123,6 +140,9 @@
     self.hud.showsGuides = s.showsGuides;
     self.overlay.showsFarRegion = s.showsFarRegion;
     self.motion.pitchOffsetRadians = s.pitchOffsetRadians;
+    self.alertEngine.beepEnabled = s.alertBeep;
+    self.alertEngine.hapticEnabled = s.alertHaptic;
+    self.alertEngine.speechEnabled = s.alertSpeech;
     CGRect roi = self.detector.farRegionOfInterest;
     self.overlay.farRegionTopLeft = CGRectMake(roi.origin.x, 1.0 - (roi.origin.y + roi.size.height),
                                                roi.size.width, roi.size.height);
@@ -335,8 +355,66 @@
         [self refreshBadges];
     }
 
-    [self.hud setStatus:KCStatusNone];      // 3 màu theo luật bắt đầu từ Phase 3
-    self.overlay.leaderColor = KCColorGreen();
+    [self evaluateAgainstLaw];
+}
+
+/// Tra ngưỡng theo tốc độ, chấm trạng thái 3 màu và bắn cảnh báo (FR-2, FR-3, FR-4, FR-5).
+- (void)evaluateAgainstLaw {
+    KCSettings *s = [KCSettings shared];
+    BOOL speedOK = self.location.speedValid;
+    double v = self.location.speedKmh;
+
+    [self.hud setSpeedKmh:v valid:speedOK];
+
+    KCRangeResult r = self.lastRange;
+    BOOL haveDistance = (r.valid && self.lastRangeTime > 0);
+
+    // FR-2: chưa khoá GPS hoặc dưới 5 km/h thì ẩn phần luật, chỉ hiện khoảng cách.
+    if (!speedOK || !self.location.moving) {
+        [self.hud setGapSeconds:0 valid:NO];
+        [self.hud setStatus:KCStatusNone];
+        self.overlay.leaderColor = KCColorGreen();
+        [self.hud setThresholdText:speedOK ? @"đang đứng yên" : @"đang chờ GPS"];
+        self.lastOverSpeed = NO;
+        return;
+    }
+
+    double factor = self.adverseWeather ? s.adverseFactor : 1.0;
+    KCThreshold t = [[KCLegalRules shared] thresholdForSpeedKmh:v
+                                                  adverseFactor:factor
+                                                      timestamp:CFAbsoluteTimeGetCurrent()];
+    self.lastThresholdMeters = t.meters;
+    self.lastOverSpeed = t.overSpeed;
+
+    NSString *kindText;
+    if (t.kind == KCThresholdAdvisory) kindText = self.adverseWeather ? @"khuyến nghị (mưa/sương mù)" : @"khuyến nghị";
+    else kindText = self.adverseWeather ? @"khuyến nghị (mưa/sương mù)" : @"luật";
+    [self.hud setThresholdText:[NSString stringWithFormat:@"≥ %@ m (%@)", KCFormatNumber(t.meters, 0), kindText]];
+
+    if (!haveDistance) {
+        [self.hud setGapSeconds:0 valid:NO];
+        [self.hud setStatus:KCStatusNone];
+        self.overlay.leaderColor = KCColorGreen();
+        return;
+    }
+
+    double d = r.distanceMeters;
+    [self.hud setGapSeconds:d / (v / 3.6) valid:YES];
+
+    KCStatus status;
+    if (d >= t.meters * 1.10) status = KCStatusGreen;
+    else if (d >= t.meters) status = KCStatusYellow;
+    else status = KCStatusRed;
+
+    [self.hud setStatus:status];
+    self.overlay.leaderColor = (status == KCStatusRed) ? KCColorRed()
+                             : (status == KCStatusYellow ? KCColorYellow() : KCColorGreen());
+
+    if (status == KCStatusRed) {
+        if ([self.alertEngine fireAlertWithSpokenText:@"Khoảng cách quá gần"]) {
+            KCLogf(@"canh bao: D=%.1f m < nguong %.1f m tai %.0f km/h", d, t.meters, v);
+        }
+    }
 }
 
 #pragma mark - HUD
@@ -368,7 +446,9 @@
     if (self.lastLeaderLost) [badges addObject:@"mất dấu"];
     if (self.lastRange.needsCalibration) [badges addObject:@"cần hiệu chỉnh"];
     if (!self.motion.running) [badges addObject:@"chưa có cảm biến nghiêng"];
-    [badges addObject:@"chưa có GPS"];
+    if (!self.location.speedValid) [badges addObject:@"GPS…"];
+    if (self.lastOverSpeed) [badges addObject:@"quá tốc độ"];
+    if (self.adverseWeather) [badges addObject:@"thời tiết xấu"];
     [self.hud setBadges:badges];
 }
 
@@ -383,6 +463,7 @@
 - (void)showSettings {
     KCSettingsViewController *vc = [[KCSettingsViewController alloc] init];
     vc.motion = self.motion;
+    vc.alertEngine = self.alertEngine;
     vc.modalPresentationStyle = UIModalPresentationFullScreen;
     __weak typeof(self) weakSelf = self;
     vc.currentFusedDistance = ^double{

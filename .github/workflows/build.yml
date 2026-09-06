@@ -103,6 +103,8 @@ jobs:
           cat combined/var/jb/etc/khoangcachantoan/cdhashes
           cp repo/postinst combined/DEBIAN/postinst
           chmod 0755 combined/DEBIAN/postinst
+          cp repo/prerm combined/DEBIAN/prerm
+          chmod 0755 combined/DEBIAN/prerm
           cp app/control combined/DEBIAN/control
           mkdir -p out
           dpkg-deb --root-owner-group -Zxz -b combined "out/KhoangCachAnToan_${VERSION}_iphoneos-arm64.deb"
@@ -127,10 +129,16 @@ jobs:
           set -euo pipefail
           VERSION=$(grep '^Version:' app/control | awk '{print $2}')
           TAG="v${VERSION}-${GITHUB_SHA::7}"
-          gh release create "$TAG" out/*.deb \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Khoang Cach An Toan ${VERSION} (${GITHUB_SHA::7})" \
-            --notes "Build tu ${GITHUB_SHA}. Cai qua Sileo: https://hieudeptrai04.github.io/KhoangCachAnToan/"
+          # Chay lai workflow tren cung commit thi release da ton tai -> gh release create bao
+          # 422 already_exists va lam hong ca job (bo luon buoc day len kho Sileo). Nen tach hai nhanh.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/*.deb --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" out/*.deb \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Khoang Cach An Toan ${VERSION} (${GITHUB_SHA::7})" \
+              --notes "Build tu ${GITHUB_SHA}. Cai qua Sileo: https://hieudeptrai04.github.io/KhoangCachAnToan/"
+          fi
 
       - name: Publish to Sileo repo (gh-pages)
         if: success() && github.ref == 'refs/heads/main'
@@ -151,6 +159,11 @@ jobs:
           mkdir -p site/pool/main
           cp out/*.deb site/pool/main/
           cp repo/depiction.json repo/depiction.html repo/icon.png site/
+          # Sileo lay icon cua KHO tai <repo>/CydiaIcon@3x.png -> @2x.png -> .png, khong lay tu
+          # truong Icon: cua goi. Thieu ba ten nay thi kho hien icon trong.
+          cp repo/icon.png site/CydiaIcon.png
+          cp repo/icon.png site/CydiaIcon@2x.png
+          cp repo/icon.png site/CydiaIcon@3x.png
           cp app/Resources/legal.json site/legal.json
           touch site/.nojekyll
           bash repo/make-index.sh site
