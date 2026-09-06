@@ -16,6 +16,12 @@
 @property (nonatomic, assign) NSUInteger fpsFrameCount;
 @property (nonatomic, assign) CFAbsoluteTime fpsWindowStart;
 @property (nonatomic, assign) AVCaptureVideoOrientation pendingOrientation;
+@property (nonatomic, assign) NSUInteger totalFrames;
+@property (nonatomic, assign) BOOL buffersRotated;
+@property (nonatomic, strong) NSTimer *watchdog;
+@property (nonatomic, assign) NSInteger watchdogStage;
+@property (nonatomic, assign) NSUInteger droppedFrames;
+@property (nonatomic, assign) BOOL loggedIntrinsicMismatch;
 @end
 
 @implementation KCCameraController
@@ -25,6 +31,7 @@
         _frameQueue = dispatch_queue_create("com.khoangcachantoan.camera.frames", DISPATCH_QUEUE_SERIAL);
         _sessionQueue = dispatch_queue_create("com.khoangcachantoan.camera.session", DISPATCH_QUEUE_SERIAL);
         _pendingOrientation = AVCaptureVideoOrientationLandscapeRight;
+        _buffersRotated = YES;
         NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
         [nc addObserver:self selector:@selector(sessionRuntimeError:) name:AVCaptureSessionRuntimeErrorNotification object:nil];
         [nc addObserver:self selector:@selector(sessionInterrupted:) name:AVCaptureSessionWasInterruptedNotification object:nil];
@@ -35,6 +42,7 @@
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [_watchdog invalidate];
 }
 
 #pragma mark - Setup
@@ -141,7 +149,76 @@
         if (!self.session || self.session.isRunning) return;
         [self.session startRunning];
         KCLogf(@"camera: session running=%d", self.session.isRunning);
+        dispatch_async(dispatch_get_main_queue(), ^{ [self startWatchdog]; });
     });
+}
+
+#pragma mark - Theo dõi khung hình
+
+/// Phiên chạy nhưng data output không giao khung nào là lỗi câm: không exception, không
+/// runtime error, chỉ đơn giản là không có gì. Bộ theo dõi này ghi lại toàn bộ trạng thái
+/// rồi lần lượt gỡ hai thứ dễ gây nghẽn nhất (giao ma trận nội tại, rồi xoay buffer).
+- (void)startWatchdog {
+    [self.watchdog invalidate];
+    self.watchdogStage = 0;
+    self.watchdog = [NSTimer scheduledTimerWithTimeInterval:2.0 target:self
+                                                   selector:@selector(watchdogTick)
+                                                   userInfo:nil repeats:YES];
+}
+
+- (void)watchdogTick {
+    if (self.totalFrames > 0) {
+        KCLogf(@"camera: da nhan %lu khung, bo theo doi dung lai", (unsigned long)self.totalFrames);
+        [self.watchdog invalidate];
+        self.watchdog = nil;
+        return;
+    }
+    self.watchdogStage += 1;
+    [self logDetailedState];
+
+    AVCaptureConnection *conn = [self.videoOutput connectionWithMediaType:AVMediaTypeVideo];
+    if (self.watchdogStage == 1) {
+        if (conn.cameraIntrinsicMatrixDeliveryEnabled) {
+            conn.cameraIntrinsicMatrixDeliveryEnabled = NO;
+            KCLogf(@"camera: THU GO giao ma tran noi tai -> tinh fx tu FOV");
+        }
+    } else if (self.watchdogStage == 2) {
+        if (conn.isVideoOrientationSupported && conn.videoOrientation != AVCaptureVideoOrientationPortrait) {
+            conn.videoOrientation = AVCaptureVideoOrientationPortrait;
+            self.buffersRotated = NO;
+            KCLogf(@"camera: THU GO xoay buffer (ve Portrait) -> buffersRotated=NO");
+        }
+    } else if (self.watchdogStage >= 3) {
+        KCLogf(@"camera: VAN KHONG CO KHUNG sau %ld lan thu, dung theo doi", (long)self.watchdogStage);
+        [self.watchdog invalidate];
+        self.watchdog = nil;
+    }
+}
+
+- (void)logDetailedState {
+    AVCaptureSession *s = self.session;
+    AVCaptureConnection *conn = [self.videoOutput connectionWithMediaType:AVMediaTypeVideo];
+    KCLogf(@"camera: KHONG CO KHUNG (lan %ld) running=%d interrupted=%d inputs=%lu outputs=%lu bo=%lu",
+           (long)self.watchdogStage, s.isRunning, s.isInterrupted,
+           (unsigned long)s.inputs.count, (unsigned long)s.outputs.count, (unsigned long)self.droppedFrames);
+    if (conn) {
+        KCLogf(@"camera:   connection active=%d enabled=%d ports=%lu orientation=%ld stabilization=%ld intrinsics=%d",
+               conn.isActive, conn.isEnabled, (unsigned long)conn.inputPorts.count,
+               (long)conn.videoOrientation, (long)conn.activeVideoStabilizationMode,
+               conn.cameraIntrinsicMatrixDeliveryEnabled);
+    } else {
+        KCLogf(@"camera:   connection = nil");
+    }
+    NSArray<NSNumber *> *formats = self.videoOutput.availableVideoCVPixelFormatTypes;
+    NSMutableArray *names = [NSMutableArray array];
+    for (NSNumber *n in formats) {
+        OSType t = (OSType)n.unsignedIntValue;
+        [names addObject:[NSString stringWithFormat:@"%c%c%c%c",
+                          (char)((t >> 24) & 0xFF), (char)((t >> 16) & 0xFF),
+                          (char)((t >> 8) & 0xFF), (char)(t & 0xFF)]];
+    }
+    KCLogf(@"camera:   dinh dang ho tro = [%@], dang dat = %@",
+           [names componentsJoinedByString:@","], self.videoOutput.videoSettings);
 }
 
 - (void)stopRunning {
@@ -167,7 +244,9 @@
     KCLogf(@"camera: runtime error %@", n.userInfo[AVCaptureSessionErrorKey]);
 }
 - (void)sessionInterrupted:(NSNotification *)n {
-    KCLogf(@"camera: interrupted reason=%@", n.userInfo[AVCaptureSessionInterruptionReasonKey]);
+    // 1=audioDeviceInUseByAnotherClient 2=videoDeviceInUseByAnotherClient
+    // 3=videoDeviceNotAvailableWithMultipleForegroundApps 4=videoDeviceNotAvailableDueToSystemPressure
+    KCLogf(@"camera: BI NGAT reason=%@", n.userInfo[AVCaptureSessionInterruptionReasonKey]);
 }
 - (void)sessionInterruptionEnded:(NSNotification *)n {
     KCLogf(@"camera: interruption ended");
@@ -175,30 +254,61 @@
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate
 
+- (void)captureOutput:(AVCaptureOutput *)output didDropSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    self.droppedFrames += 1;
+    if (self.droppedFrames <= 3) {
+        CFTypeRef reason = CMGetAttachment(sampleBuffer, kCMSampleBufferAttachmentKey_DroppedFrameReason, NULL);
+        KCLogf(@"camera: bo khung #%lu, ly do=%@", (unsigned long)self.droppedFrames, reason);
+    }
+}
+
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    self.totalFrames += 1;
+    if (self.totalFrames == 1) KCLogf(@"camera: KHUNG DAU TIEN da ve");
+
     CVPixelBufferRef pb = CMSampleBufferGetImageBuffer(sampleBuffer);
-    if (!pb) return;
+    if (!pb) {
+        if (self.totalFrames <= 3) KCLogf(@"camera: sample buffer khong co image buffer");
+        return;
+    }
 
     KCIntrinsics intr;
     memset(&intr, 0, sizeof(intr));
     intr.width = (int)CVPixelBufferGetWidth(pb);
     intr.height = (int)CVPixelBufferGetHeight(pb);
 
+    BOOL gotIntrinsics = NO;
     CFTypeRef att = CMGetAttachment(sampleBuffer, kCMSampleBufferAttachmentKey_CameraIntrinsicMatrix, NULL);
     if (att && CFGetTypeID(att) == CFDataGetTypeID() && CFDataGetLength((CFDataRef)att) >= (CFIndex)sizeof(matrix_float3x3)) {
         matrix_float3x3 m;
         CFDataGetBytes((CFDataRef)att, CFRangeMake(0, sizeof(m)), (UInt8 *)&m);
-        intr.fx = m.columns[0][0];
-        intr.fy = m.columns[1][1];
-        intr.cx = m.columns[2][0];
-        intr.cy = m.columns[2][1];
-        intr.fromDelivery = YES;
-    } else {
+        float cx = m.columns[2][0], cy = m.columns[2][1];
+        // Ma trận được mô tả theo khung CHƯA xoay. Nếu buffer đã xoay sang dọc thì tâm ảnh
+        // sẽ lệch hẳn khỏi giữa buffer — khi đó số liệu không dùng được, quay về tính từ FOV.
+        BOOL centred = (fabsf(cx - intr.width / 2.0f) < intr.width * 0.25f) &&
+                       (fabsf(cy - intr.height / 2.0f) < intr.height * 0.25f);
+        if (centred) {
+            intr.fx = m.columns[0][0];
+            intr.fy = m.columns[1][1];
+            intr.cx = cx;
+            intr.cy = cy;
+            intr.fromDelivery = YES;
+            gotIntrinsics = YES;
+        } else if (!self.loggedIntrinsicMismatch) {
+            self.loggedIntrinsicMismatch = YES;
+            KCLogf(@"camera: ma tran noi tai (cx=%.0f cy=%.0f) khong khop buffer %dx%d -> dung FOV",
+                   cx, cy, intr.width, intr.height);
+        }
+    }
+    if (!gotIntrinsics) {
         float fovDeg = self.device.activeFormat.videoFieldOfView;
         if (fovDeg <= 0) fovDeg = 60.0f;
-        float fx = (intr.width / 2.0f) / tanf(fovDeg * (float)M_PI / 360.0f);
-        intr.fx = fx;
-        intr.fy = fx;
+        // videoFieldOfView là góc nhìn ngang của khung gốc (cạnh DÀI của cảm biến).
+        // Pixel vuông nên tiêu cự theo pixel như nhau ở cả hai trục, không phụ thuộc chiều xoay.
+        float longSide = MAX(intr.width, intr.height);
+        float f = (longSide / 2.0f) / tanf(fovDeg * (float)M_PI / 360.0f);
+        intr.fx = f;
+        intr.fy = f;
         intr.cx = intr.width / 2.0f;
         intr.cy = intr.height / 2.0f;
         intr.fromDelivery = NO;

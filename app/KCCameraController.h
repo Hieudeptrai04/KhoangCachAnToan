@@ -27,6 +27,11 @@ typedef struct {
 @property (nonatomic, copy, readonly) NSString *deviceLabel;   // "tele" hoặc "wide"
 @property (nonatomic, assign, readonly) KCIntrinsics lastIntrinsics;
 @property (nonatomic, assign, readonly) double measuredFPS;
+/// Tổng số khung hình đã nhận kể từ khi chạy phiên. 0 kéo dài nghĩa là output bị nghẽn.
+@property (nonatomic, assign, readonly) NSUInteger totalFrames;
+/// NO nghĩa là buffer KHÔNG được data output xoay theo chiều màn hình (chế độ dự phòng).
+/// Khi đó bộ điều khiển phải tự bù hướng khi đưa vào Vision và khi vẽ khung bao.
+@property (nonatomic, assign, readonly) BOOL buffersRotated;
 
 - (BOOL)setupPreferTelephoto:(BOOL)preferTele use4K:(BOOL)use4K error:(NSError **)error;
 - (void)startRunning;

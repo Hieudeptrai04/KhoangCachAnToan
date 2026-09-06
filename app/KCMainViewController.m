@@ -18,6 +18,9 @@
 #import <AVFoundation/AVFoundation.h>
 #import <math.h>
 
+/// Bề rộng làn giả định khi vẽ thảm khoảng cách (m).
+static const double kKCLaneWidthMeters = 3.5;
+
 @interface KCMainViewController () <KCCameraFrameDelegate, KCDetectorDelegate>
 @property (nonatomic, strong) KCCameraController *camera;
 @property (nonatomic, strong) KCDetector *detector;
@@ -35,7 +38,6 @@
 @property (nonatomic, strong) NSTimer *uiTimer;
 @property (nonatomic, assign) BOOL adverseWeather;
 @property (nonatomic, assign) BOOL cameraStarted;
-@property (nonatomic, assign) AVCaptureVideoOrientation currentVideoOrientation;
 @property (nonatomic, assign) CGSize lastBufferSize;
 
 // Trạng thái mới nhất (chỉ đọc/ghi trên main queue).
@@ -91,7 +93,7 @@
     [self.hud.settingsButton addTarget:self action:@selector(showSettings) forControlEvents:UIControlEventTouchUpInside];
 
     self.errorLabel = [[UILabel alloc] init];
-    self.errorLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightSemibold];
+    self.errorLabel.font = KCRoundedFont(17, UIFontWeightSemibold);
     self.errorLabel.textColor = KCColorRed();
     self.errorLabel.textAlignment = NSTextAlignmentCenter;
     self.errorLabel.numberOfLines = 0;
@@ -101,9 +103,7 @@
     [self applySettings];
     [self loadDetector];
     [self refreshBadges];
-    [self.hud setSpeedKmh:0 valid:NO];
-    [self.hud setGapSeconds:0 valid:NO];
-    [self.hud setThresholdText:@"đang chờ GPS"];
+    [self.hud setStatus:KCStatusNone text:@"Đang chờ GPS"];
 
     self.uiTimer = [NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(uiTick) userInfo:nil repeats:YES];
 }
@@ -119,7 +119,6 @@
     [super viewDidAppear:animated];
 
     // Lần mở đầu tiên: 3 slide hướng dẫn và xin quyền, sau đó mới bật camera.
-    // Từ lần thứ hai vào thẳng màn đo.
     if (!self.onboardingHandled) {
         self.onboardingHandled = YES;
         if ([KCOnboardingViewController shouldShow]) {
@@ -144,17 +143,26 @@
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     self.previewLayer.frame = self.view.bounds;
-    self.errorLabel.frame = CGRectInset(self.view.bounds, 60, 120);
+    self.errorLabel.frame = CGRectInset(self.view.bounds, 32, 200);
     [self.view bringSubviewToFront:self.overlay];
     [self.view bringSubviewToFront:self.hud];
+    self.overlay.bottomLimitY = self.hud.cardTopY > 0 ? self.hud.cardTopY - 8 : 0;
     [self applyOrientation];
 }
 
-- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
-    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
-    [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> ctx) {
-        [self applyOrientation];
-    }];
+#pragma mark - Hướng màn hình: chỉ DỌC
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskPortrait; }
+- (BOOL)shouldAutorotate { return NO; }
+- (BOOL)prefersStatusBarHidden { return YES; }
+- (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
+
+- (void)applyOrientation {
+    AVCaptureVideoOrientation vo = AVCaptureVideoOrientationPortrait;
+    if (self.previewLayer.connection.isVideoOrientationSupported && self.previewLayer.connection.videoOrientation != vo) {
+        self.previewLayer.connection.videoOrientation = vo;
+    }
+    [self.camera applyVideoOrientation:vo];
 }
 
 #pragma mark - Cài đặt
@@ -170,42 +178,10 @@
     self.alertEngine.speechEnabled = s.alertSpeech;
     if (s.logTripCSV && !self.tripLogger.recording) [self.tripLogger start];
     else if (!s.logTripCSV && self.tripLogger.recording) [self.tripLogger stop];
+
     CGRect roi = self.detector.farRegionOfInterest;
     self.overlay.farRegionTopLeft = CGRectMake(roi.origin.x, 1.0 - (roi.origin.y + roi.size.height),
                                                roi.size.width, roi.size.height);
-}
-
-#pragma mark - Orientation (FR-9: chỉ ngang)
-
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
-- (BOOL)shouldAutorotate { return YES; }
-- (BOOL)prefersStatusBarHidden { return YES; }
-- (BOOL)prefersHomeIndicatorAutoHidden { return YES; }
-
-- (UIInterfaceOrientation)interfaceOrientationNow {
-    UIWindowScene *scene = self.view.window.windowScene;
-    if (scene) return scene.interfaceOrientation;
-    return [UIApplication sharedApplication].statusBarOrientation;
-}
-
-- (void)applyOrientation {
-    // Khớp theo TÊN ở đây là đúng, và trùng với khớp theo giá trị số:
-    // UIInterfaceOrientationLandscapeLeft = UIDeviceOrientationLandscapeRight = 4
-    // = AVCaptureVideoOrientationLandscapeLeft; LandscapeRight = 3 ở cả hai kiểu liệt kê.
-    // (Chỗ hay nhầm 180° là khi khớp UIDeviceOrientation với AVCaptureVideoOrientation theo tên.)
-    UIInterfaceOrientation io = [self interfaceOrientationNow];
-    AVCaptureVideoOrientation vo = (io == UIInterfaceOrientationLandscapeLeft) ? AVCaptureVideoOrientationLandscapeLeft
-                                                                              : AVCaptureVideoOrientationLandscapeRight;
-    if (self.previewLayer.connection.isVideoOrientationSupported && self.previewLayer.connection.videoOrientation != vo) {
-        self.previewLayer.connection.videoOrientation = vo;
-    }
-    [self.camera applyVideoOrientation:vo];
-    if (vo != self.currentVideoOrientation) {
-        self.currentVideoOrientation = vo;
-        [self.tracker reset];
-        [self.estimator reset];
-        KCLogf(@"orientation: interface=%ld -> video=%ld", (long)io, (long)vo);
-    }
 }
 
 #pragma mark - Camera
@@ -243,37 +219,26 @@
     self.previewLayer.frame = self.view.bounds;
     [self.view.layer insertSublayer:self.previewLayer atIndex:0];
 
-    // Quy đổi khung bao sang toạ độ màn hình.
-    //
-    // KHÔNG dùng rectForMetadataOutputRectOfInterest: ở đây. Hàm đó nhận toạ độ theo
-    // khung CHƯA XOAY của thiết bị và tự áp phép xoay của preview. Nhưng buffer đưa cho
-    // Vision ĐÃ được xoay sẵn (videoOrientation đặt trên connection của data output),
-    // nên nrect vốn đã ở hệ hiển thị — dùng hàm đó là xoay hai lần: ở một trong hai chiều
-    // ngang, mọi khung bao bị lật đối xứng qua tâm màn hình trong khi hình vẫn hiện đúng.
-    //
-    // Vì buffer và ảnh trên preview là cùng một ảnh, phép biến đổi chỉ còn là co giãn
-    // resizeAspectFill cộng lệch tâm, không xoay, và đúng ở cả hai chiều ngang.
+    // Buffer đưa cho Vision đã được data output xoay theo chiều màn hình, tức cùng ảnh mà
+    // preview đang hiển thị. Vì vậy chỉ cần co giãn resizeAspectFill, KHÔNG xoay thêm lần nữa
+    // (dùng rectForMetadataOutputRectOfInterest: ở đây sẽ xoay hai lần).
     __weak typeof(self) weakSelf = self;
     self.overlay.rectConverter = ^CGRect(CGRect nrect) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return CGRectZero;
-        AVCaptureVideoPreviewLayer *layer = strongSelf.previewLayer;
-        if (!layer) return CGRectZero;
-
+        CGFloat sc, ox, oy;
+        if (![strongSelf previewScale:&sc offsetX:&ox offsetY:&oy]) return CGRectZero;
         CGSize buf = strongSelf.lastBufferSize;
-        CGSize ls = layer.bounds.size;
-        if (buf.width <= 0 || buf.height <= 0 || ls.width <= 0 || ls.height <= 0) return CGRectZero;
-
-        CGFloat sc = MAX(ls.width / buf.width, ls.height / buf.height);   // resizeAspectFill
-        CGFloat dw = buf.width * sc;
-        CGFloat dh = buf.height * sc;
-        CGFloat ox = (ls.width - dw) * 0.5;
-        CGFloat oy = (ls.height - dh) * 0.5;
-
-        return CGRectMake(ox + nrect.origin.x * dw,
-                          oy + nrect.origin.y * dh,
-                          nrect.size.width * dw,
-                          nrect.size.height * dh);
+        return CGRectMake(ox + nrect.origin.x * buf.width * sc,
+                          oy + nrect.origin.y * buf.height * sc,
+                          nrect.size.width * buf.width * sc,
+                          nrect.size.height * buf.height * sc);
+    };
+    self.overlay.pointConverter = ^CGPoint(CGPoint np) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        CGFloat sc, ox, oy;
+        if (![strongSelf previewScale:&sc offsetX:&ox offsetY:&oy]) return CGPointZero;
+        CGSize buf = strongSelf.lastBufferSize;
+        return CGPointMake(ox + np.x * buf.width * sc, oy + np.y * buf.height * sc);
     };
 
     [self applySettings];
@@ -281,6 +246,20 @@
     [self.camera startRunning];
     KCLogf(@"camera: preview layer added, session start requested (device=%@)", self.camera.deviceLabel);
     [self refreshBadges];
+}
+
+/// Hệ số co giãn và độ lệch tâm của preview theo kiểu resizeAspectFill.
+- (BOOL)previewScale:(CGFloat *)scale offsetX:(CGFloat *)ox offsetY:(CGFloat *)oy {
+    AVCaptureVideoPreviewLayer *layer = self.previewLayer;
+    if (!layer) return NO;
+    CGSize buf = self.lastBufferSize;
+    CGSize ls = layer.bounds.size;
+    if (buf.width <= 0 || buf.height <= 0 || ls.width <= 0 || ls.height <= 0) return NO;
+    CGFloat s = MAX(ls.width / buf.width, ls.height / buf.height);
+    *scale = s;
+    *ox = (ls.width - buf.width * s) * 0.5;
+    *oy = (ls.height - buf.height * s) * 0.5;
+    return YES;
 }
 
 - (void)showError:(NSString *)msg {
@@ -299,10 +278,8 @@
 #pragma mark - KCCameraFrameDelegate (hàng đợi camera)
 
 - (void)cameraController:(KCCameraController *)controller didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer intrinsics:(KCIntrinsics)intrinsics timestamp:(CMTime)timestamp {
-    // Kích thước buffer dùng cho phép quy đổi khung bao sang toạ độ màn hình.
     self.lastBufferSize = CGSizeMake(CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer));
-    // Buffer đã được data output xoay đúng chiều (videoOrientation) -> khai .up cho Vision là đúng sự thật.
-    // Hai điều này đi kèm nhau: bỏ videoOrientation ở data output thì phải đổi luôn hướng ở đây.
+    // Buffer đã được data output xoay đúng chiều -> khai .up cho Vision là đúng sự thật.
     [self.detector submitPixelBuffer:pixelBuffer orientation:kCGImagePropertyOrientationUp];
 }
 
@@ -327,16 +304,23 @@
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self.overlay updateWithDetections:result.detections leader:result.leader leaderLost:result.leaderLost];
-        self.lastDetectionCount = result.detections.count;
-        self.lastInLaneCount = inLane;
-        self.lastLeaderLost = result.leaderLost;
-
         if (range.valid) {
             self.lastRange = range;
             self.lastRangeTime = CFAbsoluteTimeGetCurrent();
             [self.hud setDistanceMeters:range.distanceMeters valid:YES approximate:range.approximate];
         }
+        self.lastDetectionCount = result.detections.count;
+        self.lastInLaneCount = inLane;
+        self.lastLeaderLost = result.leaderLost;
+
+        KCRangeResult shown = self.lastRange;
+        BOOL haveDistance = (shown.valid && self.lastRangeTime > 0);
+        [self.overlay updateWithDetections:result.detections
+                                    leader:result.leader
+                                leaderLost:result.leaderLost
+                           displayedMeters:shown.distanceMeters
+                           distanceIsValid:haveDistance
+                                  geometry:[self ladderGeometryWithIntrinsics:intr fused:shown.fusedMeters valid:haveDistance]];
 
         if (result.leader) {
             CGFloat wpx = [result.leader widthPixelsForBufferWidth:intr.width];
@@ -347,21 +331,33 @@
             self.lastLeaderText = @"—";
         }
 
-        // Khung bao vẽ lại mỗi lần suy luận; phần chữ chỉ 4 lần/giây
-        // (dựng lại nhãn huy hiệu ở 15 Hz tốn CPU vô ích).
         CFAbsoluteTime t = CFAbsoluteTimeGetCurrent();
         if (t - self.lastHudTextRefresh >= 0.25) {
             self.lastHudTextRefresh = t;
+            [self.hud setInferenceFPS:self.detector.inferenceFPS];
             [self refreshDebugText];
             [self refreshBadges];
         }
     });
 }
 
+- (KCLadderGeometry)ladderGeometryWithIntrinsics:(KCIntrinsics)intr fused:(double)fusedMeters valid:(BOOL)valid {
+    KCLadderGeometry g;
+    memset(&g, 0, sizeof(g));
+    g.valid = valid && intr.width > 0 && intr.fx > 0;
+    g.fx = intr.fx; g.fy = intr.fy; g.cx = intr.cx; g.cy = intr.cy;
+    g.bufferWidth = intr.width; g.bufferHeight = intr.height;
+    g.pitchRadians = self.motion.pitchRadians;
+    g.cameraHeightMeters = [KCSettings shared].cameraHeightMeters;
+    g.laneWidthMeters = kKCLaneWidthMeters;
+    g.leadDistanceMeters = fusedMeters;
+    g.thresholdMeters = self.lastThresholdMeters;
+    return g;
+}
+
 #pragma mark - Nhịp giao diện
 
 - (void)uiTick {
-    // Vạch chân trời theo góc chúc hiện tại: y = cy − fy·tan(θ).
     KCIntrinsics intr = self.camera.lastIntrinsics;
     if (intr.height > 0 && intr.fy > 0) {
         self.estimator.pitchRadians = self.motion.pitchRadians;
@@ -397,13 +393,19 @@
     KCRangeResult r = self.lastRange;
     BOOL haveDistance = (r.valid && self.lastRangeTime > 0);
 
+    // Thời gian tới va chạm: chỉ có nghĩa khi đang tiến sát.
+    double closing = -r.closingSpeedMps;
+    BOOL ttcValid = haveDistance && closing > 0.3;
+    [self.hud setTimeToCollisionSeconds:ttcValid ? (r.distanceMeters / closing) : 0 valid:ttcValid];
+
     // FR-2: chưa khoá GPS hoặc dưới 5 km/h thì ẩn phần luật, chỉ hiện khoảng cách.
     if (!speedOK || !self.location.moving) {
         [self.hud setGapSeconds:0 valid:NO];
-        [self.hud setStatus:KCStatusNone];
+        [self.hud setThresholdMeters:0 valid:NO legal:YES];
+        [self.hud setStatus:KCStatusNone text:speedOK ? @"Đang đứng yên" : @"Đang chờ GPS"];
         self.overlay.leaderColor = KCColorGreen();
-        [self.hud setThresholdText:speedOK ? @"đang đứng yên" : @"đang chờ GPS"];
         self.lastOverSpeed = NO;
+        self.lastThresholdMeters = 0;
         [self.tripLogger logSpeedKmh:v speedValid:speedOK
                             distance:r.distanceMeters distanceValid:haveDistance
                            threshold:0 status:speedOK ? @"dung_yen" : @"cho_gps"];
@@ -416,15 +418,11 @@
                                                       timestamp:CFAbsoluteTimeGetCurrent()];
     self.lastThresholdMeters = t.meters;
     self.lastOverSpeed = t.overSpeed;
-
-    NSString *kindText;
-    if (t.kind == KCThresholdAdvisory) kindText = self.adverseWeather ? @"khuyến nghị (mưa/sương mù)" : @"khuyến nghị";
-    else kindText = self.adverseWeather ? @"khuyến nghị (mưa/sương mù)" : @"luật";
-    [self.hud setThresholdText:[NSString stringWithFormat:@"≥ %@ m (%@)", KCFormatNumber(t.meters, 0), kindText]];
+    [self.hud setThresholdMeters:t.meters valid:YES legal:(t.kind == KCThresholdLegal && !self.adverseWeather)];
 
     if (!haveDistance) {
         [self.hud setGapSeconds:0 valid:NO];
-        [self.hud setStatus:KCStatusNone];
+        [self.hud setStatus:KCStatusNone text:@"Không thấy xe trước"];
         self.overlay.leaderColor = KCColorGreen();
         [self.tripLogger logSpeedKmh:v speedValid:YES distance:0 distanceValid:NO
                            threshold:t.meters status:@"khong_thay_xe"];
@@ -435,11 +433,12 @@
     [self.hud setGapSeconds:d / (v / 3.6) valid:YES];
 
     KCStatus status;
-    if (d >= t.meters * 1.10) status = KCStatusGreen;
-    else if (d >= t.meters) status = KCStatusYellow;
-    else status = KCStatusRed;
+    NSString *statusText;
+    if (d >= t.meters * 1.10)      { status = KCStatusGreen;  statusText = @"An toàn"; }
+    else if (d >= t.meters)        { status = KCStatusYellow; statusText = @"Sát ngưỡng"; }
+    else                           { status = KCStatusRed;    statusText = @"Quá gần"; }
 
-    [self.hud setStatus:status];
+    [self.hud setStatus:status text:statusText];
     self.overlay.leaderColor = (status == KCStatusRed) ? KCColorRed()
                              : (status == KCStatusYellow ? KCColorYellow() : KCColorGreen());
 
@@ -449,9 +448,9 @@
         }
     }
 
-    NSString *statusText = (status == KCStatusRed) ? @"do" : (status == KCStatusYellow ? @"vang" : @"xanh");
+    NSString *logStatus = (status == KCStatusRed) ? @"do" : (status == KCStatusYellow ? @"vang" : @"xanh");
     [self.tripLogger logSpeedKmh:v speedValid:YES distance:d distanceValid:YES
-                       threshold:t.meters status:statusText];
+                       threshold:t.meters status:logStatus];
 }
 
 #pragma mark - HUD
@@ -460,15 +459,16 @@
     KCIntrinsics i = self.camera.lastIntrinsics;
     KCRangeResult r = self.lastRange;
     NSString *rangeText = r.valid
-        ? [NSString stringWithFormat:@"D_w=%@ D_g=%@ hợp=%@±%@ v=%@ m/s",
+        ? [NSString stringWithFormat:@"D_w=%@ D_g=%@ hợp=%@±%@",
            r.widthValid ? KCFormatNumber(r.widthMeters, 1) : @"—",
            r.groundValid ? KCFormatNumber(r.groundMeters, 1) : @"—",
-           KCFormatNumber(r.fusedMeters, 1), KCFormatNumber(r.sigmaMeters, 1),
-           KCFormatNumber(r.closingSpeedMps, 1)]
+           KCFormatNumber(r.fusedMeters, 1), KCFormatNumber(r.sigmaMeters, 1)]
         : @"chưa đo";
     [self.hud setDebugText:[NSString stringWithFormat:
-                            @"%@ %d×%d · cam %.0f fps · suy luận %.1f fps (%.0f ms) · %lu xe / %lu cùng làn · θ=%@° · %@",
+                            @"%@ %d×%d · %lu khung · cam %.0f fps · suy luận %.1f fps (%.0f ms)\n"
+                            @"%lu xe / %lu cùng làn · θ=%@° · %@",
                             self.camera.deviceLabel ?: @"?", i.width, i.height,
+                            (unsigned long)self.camera.totalFrames,
                             self.camera.measuredFPS, self.detector.inferenceFPS,
                             self.detector.lastInferenceSeconds * 1000,
                             (unsigned long)self.lastDetectionCount, (unsigned long)self.lastInLaneCount,
@@ -479,13 +479,12 @@
 - (void)refreshBadges {
     NSMutableArray<NSString *> *badges = [NSMutableArray array];
     if (!self.detector.ready) [badges addObject:[NSString stringWithFormat:@"model: %@", self.detector.statusText]];
-    else [badges addObject:[NSString stringWithFormat:@"%.0f fps", self.detector.inferenceFPS]];
     if (self.lastLeaderLost) [badges addObject:@"mất dấu"];
     if (self.lastRange.needsCalibration) [badges addObject:@"cần hiệu chỉnh"];
-    if (!self.motion.running) [badges addObject:@"chưa có cảm biến nghiêng"];
     if (!self.location.speedValid) [badges addObject:@"GPS…"];
     if (self.lastOverSpeed) [badges addObject:@"quá tốc độ"];
     if (self.adverseWeather) [badges addObject:@"thời tiết xấu"];
+    if (self.camera.totalFrames == 0 && self.cameraStarted) [badges addObject:@"chưa có hình"];
     [self.hud setBadges:badges];
 }
 
@@ -512,6 +511,10 @@
     vc.onChange = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         [strongSelf applySettings];
+    };
+    vc.debugToggle = ^(BOOL on) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        [strongSelf.hud setDebugVisible:on];
     };
     [self presentViewController:vc animated:YES completion:nil];
 }

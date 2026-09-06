@@ -56,7 +56,7 @@ static NSString *KCFormatVND(double amount) {
     ]];
 }
 
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskPortrait; }
 - (BOOL)prefersStatusBarHidden { return YES; }
 
 - (void)closeTapped { [self dismissViewControllerAnimated:YES completion:nil]; }

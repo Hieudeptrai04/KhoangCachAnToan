@@ -25,7 +25,7 @@ static NSString *KCDeviceModel(void) {
 }
 
 - (UIInterfaceOrientationMask)application:(UIApplication *)application supportedInterfaceOrientationsForWindow:(UIWindow *)window {
-    return UIInterfaceOrientationMaskLandscape;
+    return UIInterfaceOrientationMaskPortrait;
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {

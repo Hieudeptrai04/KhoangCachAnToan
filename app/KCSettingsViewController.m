@@ -37,6 +37,7 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<NSString *> *sectionTitles;
 @property (nonatomic, strong) NSMutableArray<NSArray<KCSettingsRow *> *> *sections;
+@property (nonatomic, assign) BOOL debugVisible;
 @end
 
 @implementation KCSettingsViewController
@@ -74,7 +75,7 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
     self.tableView.contentInset = UIEdgeInsetsMake(56, 0, 0, 0);
 }
 
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskPortrait; }
 - (BOOL)prefersStatusBarHidden { return YES; }
 
 - (void)closeTapped {
@@ -175,6 +176,9 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
         [self stepper:@"Hệ số thời tiết xấu" unit:@"×" min:1.0 max:2.5 step:0.1 decimals:1
                getter:^double{ return s.adverseFactor; }
                setter:^(double v){ s.adverseFactor = v; [weakSelf changed]; }],
+        [self toggle:@"Hiện dòng thông tin kỹ thuật"
+              getter:^BOOL{ return weakSelf.debugVisible; }
+              setter:^(BOOL v){ weakSelf.debugVisible = v; if (weakSelf.debugToggle) weakSelf.debugToggle(v); }],
     ]];
 
     // --- Camera ---

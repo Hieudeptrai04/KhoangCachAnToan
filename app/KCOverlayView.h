@@ -1,24 +1,39 @@
 #import <UIKit/UIKit.h>
 #import "KCDetection.h"
 
-/// Lớp phủ vẽ khung bao xe lên trên preview camera (mục 5.8).
-/// Nằm giữa preview layer và HUD; không nhận chạm.
+/// Dữ liệu hình học để vẽ thảm khoảng cách theo phối cảnh trên mặt đường.
+typedef struct {
+    BOOL valid;
+    float fx, fy, cx, cy;
+    int bufferWidth, bufferHeight;
+    double pitchRadians;         // góc chúc camera, dương = chúc xuống
+    double cameraHeightMeters;   // chiều cao ống kính so mặt đường
+    double laneWidthMeters;      // bề rộng làn giả định
+    double leadDistanceMeters;   // khoảng cách tới xe trước tính từ ống kính; 0 = chưa có
+    double thresholdMeters;      // ngưỡng an toàn; 0 = chưa có
+} KCLadderGeometry;
+
+/// Lớp phủ trên preview: thảm khoảng cách đổi màu, khung bao xe, nhãn cự ly.
 @interface KCOverlayView : UIView
 
-/// Chuyển hình chữ nhật chuẩn hoá (gốc trên-trái, toàn khung) sang toạ độ view.
-/// Bộ điều khiển gán bằng `layerRectConvertedFromMetadataOutputRect:` của preview layer
-/// để khớp đúng khi preview dùng resizeAspectFill.
+/// Đổi hình chữ nhật chuẩn hoá (gốc trên-trái, toàn khung) sang toạ độ view.
 @property (nonatomic, copy) CGRect (^rectConverter)(CGRect normalizedRect);
+/// Đổi một điểm chuẩn hoá sang toạ độ view.
+@property (nonatomic, copy) CGPoint (^pointConverter)(CGPoint normalizedPoint);
 
-/// Màu khung xe dẫn đầu (theo trạng thái 3 màu ở các phase sau).
 @property (nonatomic, strong) UIColor *leaderColor;
-/// Hiện khung vùng quan tâm của kênh xa (để kiểm tra khi hiệu chỉnh).
 @property (nonatomic, assign) BOOL showsFarRegion;
-/// Vùng quan tâm kênh xa theo quy ước app (chuẩn hoá, gốc trên-trái).
 @property (nonatomic, assign) CGRect farRegionTopLeft;
+/// Vẽ thảm khoảng cách (mặc định bật).
+@property (nonatomic, assign) BOOL showsLadder;
+/// Không vẽ thảm bên dưới đường này (tránh chui xuống dưới thẻ số liệu).
+@property (nonatomic, assign) CGFloat bottomLimitY;
 
 - (void)updateWithDetections:(NSArray<KCDetection *> *)detections
                       leader:(KCDetection *)leader
-                  leaderLost:(BOOL)leaderLost;
+                  leaderLost:(BOOL)leaderLost
+              displayedMeters:(double)displayedMeters
+              distanceIsValid:(BOOL)distanceIsValid
+                     geometry:(KCLadderGeometry)geometry;
 
 @end

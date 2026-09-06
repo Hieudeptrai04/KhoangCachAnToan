@@ -72,8 +72,9 @@ static NSString *const kKCOnboardingKey = @"onboardingCompleted";
     self.nextButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.nextButton.backgroundColor = KCColorGreen();
     [self.nextButton setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
-    self.nextButton.titleLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightBold];
-    self.nextButton.layer.cornerRadius = 12;
+    self.nextButton.titleLabel.font = KCRoundedFont(18, UIFontWeightBold);
+    self.nextButton.layer.cornerRadius = 16;
+    self.nextButton.layer.cornerCurve = kCACornerCurveContinuous;
     [self.nextButton addTarget:self action:@selector(nextTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:self.nextButton];
 
@@ -81,7 +82,7 @@ static NSString *const kKCOnboardingKey = @"onboardingCompleted";
     [self requestPermissions];
 }
 
-- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskLandscape; }
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations { return UIInterfaceOrientationMaskPortrait; }
 - (BOOL)prefersStatusBarHidden { return YES; }
 
 - (void)requestPermissions {
@@ -109,31 +110,32 @@ static NSString *const kKCOnboardingKey = @"onboardingCompleted";
     for (NSUInteger i = 0; i < self.pages.count; i++) {
         NSArray<NSString *> *page = self.pages[i];
         CGFloat x = b.size.width * i;
-        CGFloat left = x + in.left + 40;
-        CGFloat width = b.size.width - in.left - in.right - 80;
+        CGFloat left = x + 32;
+        CGFloat width = b.size.width - 64;
+        CGFloat top = in.top + MAX(60, (b.size.height - in.top - in.bottom) * 0.16);
 
-        UILabel *icon = [[UILabel alloc] initWithFrame:CGRectMake(left, in.top + 18, width, 52)];
+        UILabel *icon = [[UILabel alloc] initWithFrame:CGRectMake(left, top, width, 80)];
         icon.text = page[0];
-        icon.font = [UIFont systemFontOfSize:44];
+        icon.font = [UIFont systemFontOfSize:64];
         [self.scrollView addSubview:icon];
 
-        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(left, in.top + 74, width, 34)];
+        UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(left, top + 96, width, 40)];
         title.text = page[1];
-        title.font = [UIFont systemFontOfSize:26 weight:UIFontWeightBold];
+        title.font = KCRoundedFont(28, UIFontWeightBold);
         title.textColor = KCColorGreen();
         [self.scrollView addSubview:title];
 
-        UILabel *body = [[UILabel alloc] initWithFrame:CGRectMake(left, in.top + 116, width, b.size.height - in.top - in.bottom - 200)];
+        UILabel *body = [[UILabel alloc] initWithFrame:CGRectMake(left, top + 148, width, b.size.height - top - 260)];
         body.text = page[2];
-        body.font = [UIFont systemFontOfSize:16];
+        body.font = [UIFont systemFontOfSize:17];
         body.textColor = [UIColor colorWithWhite:0.88 alpha:1];
         body.numberOfLines = 0;
         [self.scrollView addSubview:body];
     }
 
-    CGFloat bottom = b.size.height - in.bottom - 16;
-    self.nextButton.frame = CGRectMake(b.size.width - in.right - 40 - 190, bottom - 50, 190, 50);
-    self.pageControl.frame = CGRectMake(in.left + 40, bottom - 44, 160, 38);
+    CGFloat bottom = b.size.height - in.bottom - 24;
+    self.nextButton.frame = CGRectMake(32, bottom - 54, b.size.width - 64, 54);
+    self.pageControl.frame = CGRectMake(32, bottom - 54 - 40, b.size.width - 64, 34);
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {

@@ -15,5 +15,7 @@
 @property (nonatomic, copy) double (^currentFusedDistance)(void);
 /// Gọi mỗi khi có thay đổi cần áp dụng ngay.
 @property (nonatomic, copy) void (^onChange)(void);
+/// Bật/tắt dòng thông tin kỹ thuật trên HUD.
+@property (nonatomic, copy) void (^debugToggle)(BOOL);
 
 @end
