@@ -95,6 +95,8 @@ jobs:
           test -f "$APPDIR/KhoangCachAnToan"
           test -d "$APPDIR/YOLOv3TinyInt8LUT.mlmodelc"
           test -f "$APPDIR/legal.json"
+          # UILaunchScreen bat buoc: thieu key nay iOS chay app o che do tuong thich (vien den, khong full man hinh)
+          plutil -p "$APPDIR/Info.plist" | grep -q UILaunchScreen || { echo "LOI: Info.plist thieu UILaunchScreen"; exit 1; }
           mkdir -p combined/var/jb/etc/khoangcachantoan
           ldid -h "$APPDIR/KhoangCachAnToan" | awk -F= '/^CDHash=/ {print $2}' > combined/var/jb/etc/khoangcachantoan/cdhashes
           test -s combined/var/jb/etc/khoangcachantoan/cdhashes
@@ -103,9 +105,12 @@ jobs:
           chmod 0755 combined/DEBIAN/postinst
           cp app/control combined/DEBIAN/control
           mkdir -p out
-          dpkg-deb -Zxz -b combined "out/KhoangCachAnToan_${VERSION}_iphoneos-arm64.deb"
+          dpkg-deb --root-owner-group -Zxz -b combined "out/KhoangCachAnToan_${VERSION}_iphoneos-arm64.deb"
+          # Moi file trong .deb phai thuoc root/root (khong phai uid cua runner)
+          BADOWN=$(dpkg-deb -c "out/KhoangCachAnToan_${VERSION}_iphoneos-arm64.deb" | awk '{print $2}' | sort -u | grep -v '^root/root$' || true)
+          [ -z "$BADOWN" ] || { echo "LOI: quyen so huu khong phai root/root: $BADOWN"; exit 1; }
           ls -lh out/
-          find combined -type f | sort
+          dpkg-deb -c "out/KhoangCachAnToan_${VERSION}_iphoneos-arm64.deb" | sort -k6
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4

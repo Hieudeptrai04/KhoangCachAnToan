@@ -7,7 +7,7 @@
 | | |
 |---|---|
 | Bundle id / gói | `com.khoangcachantoan.app` |
-| Kho Sileo | `https://hieudeptrai04.github.io/KhoangCachAnToan/` |
+| Kho Sileo | `https://zalosuper.net/KhoangCachAnToan/` (địa chỉ `https://hieudeptrai04.github.io/KhoangCachAnToan/` tự chuyển hướng sang đây) |
 | Bản build | GitHub Releases của repo này, tag `v<ver>-<sha7>` |
 | Máy đã thử | iPhone X (iPhone10,3), iOS 16.7.11, Dopamine 2 rootless |
 
@@ -15,13 +15,13 @@
 
 | Phase | Phiên bản | Nội dung | Trạng thái |
 |---|---|---|---|
-| 0 | 0.1.0 | Khung xương: CI, kho Sileo, camera preview ngang, ma trận nội tại, HUD số giả | đang làm |
+| 0 | 0.1.1 | Khung xương: CI, kho Sileo, camera preview ngang, ma trận nội tại, HUD số giả | đang làm |
 | 1 | 0.2.0 | Phát hiện xe (YOLOv3-Tiny, 2 kênh suy luận), chọn xe dẫn đầu, bám theo | chưa |
 | 2 | 0.3.0 | Ước lượng khoảng cách, hiệu chỉnh h / d_front / k / cân ngang | chưa |
 | 3 | 0.4.0 | GPS, ngưỡng luật, cảnh báo 3 màu, bíp/rung/giọng, thời tiết xấu, màn Luật | chưa |
 | 4 | 1.0.0 | Onboarding, cài đặt đầy đủ, tiết kiệm pin, CSV, kiểm thử đường | chưa |
 
-Bản 0.1.0 **chưa đo thật**: số trên HUD là số giả có nhãn `DEMO` để kiểm tra bố cục và camera.
+Bản 0.1.1 **chưa đo thật**: số trên HUD là số giả có nhãn `DEMO` để kiểm tra bố cục và camera.
 
 ## Yêu cầu
 
@@ -33,7 +33,7 @@ Bản 0.1.0 **chưa đo thật**: số trên HUD là số giả có nhãn `DEMO`
 
 ### Qua Sileo (khuyến nghị, tự cập nhật)
 
-1. Sileo → **Sources** → **+** → dán `https://hieudeptrai04.github.io/KhoangCachAnToan/` → Add.
+1. Sileo → **Sources** → **+** → dán `https://zalosuper.net/KhoangCachAnToan/` → Add.
 2. Refresh → tìm **Khoang Cach An Toan** → Install.
 3. App xuất hiện trên SpringBoard với tên **Khoảng Cách An Toàn**. Nếu chưa thấy icon, mở lại SpringBoard hoặc chạy `uicache -a`.
 
@@ -118,7 +118,7 @@ Nơi có biển P.121 "Cự ly tối thiểu giữa hai xe": giữ không nhỏ 
 - 27/8/2026: CSGT bắt đầu xử phạt lỗi khoảng cách trên cao tốc Pháp Vân – Cầu Giẽ – Cao Bồ – Mai Sơn – Nghi Sơn bằng camera và vạch mốc 0 – 50 – 100 – 150 – 200 m.
 - 01/9/2026: Chính phủ yêu cầu rà soát quy định khoảng cách và mức phạt, báo cáo trong tháng 9/2026. **Số liệu có thể đổi.**
 
-Vì vậy app **không hard-code ngưỡng**: toàn bộ bảng, mức phạt, trích dẫn nằm trong [app/Resources/legal.json](app/Resources/legal.json) (đóng gói theo bản) và app tự tải bản mới từ `https://hieudeptrai04.github.io/KhoangCachAnToan/legal.json` tối đa 1 lần / 7 ngày (so `version`, xác thực JSON, lỗi thì giữ bản cũ). CI tự chép `legal.json` lên `gh-pages` mỗi lần build.
+Vì vậy app **không hard-code ngưỡng**: toàn bộ bảng, mức phạt, trích dẫn nằm trong [app/Resources/legal.json](app/Resources/legal.json) (đóng gói theo bản) và app tự tải bản mới từ `https://zalosuper.net/KhoangCachAnToan/legal.json` tối đa 1 lần / 7 ngày (so `version`, xác thực JSON, lỗi thì giữ bản cũ). CI tự chép `legal.json` lên `gh-pages` mỗi lần build.
 
 ## Độ chính xác đã đo
 
