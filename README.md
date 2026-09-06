@@ -120,6 +120,10 @@ Nơi có biển P.121 "Cự ly tối thiểu giữa hai xe": giữ không nhỏ 
 
 Vì vậy app **không hard-code ngưỡng**: toàn bộ bảng, mức phạt, trích dẫn nằm trong [app/Resources/legal.json](app/Resources/legal.json) (đóng gói theo bản) và app tự tải bản mới từ `https://zalosuper.net/KhoangCachAnToan/legal.json` tối đa 1 lần / 7 ngày (so `version`, xác thực JSON, lỗi thì giữ bản cũ). CI tự chép `legal.json` lên `gh-pages` mỗi lần build.
 
+## Kiểm thử trên máy
+
+Bảng kiểm từng bước cho mỗi phase nằm ở [docs/kiem-thu.md](docs/kiem-thu.md), kèm lệnh cài qua SSH và lệnh lấy nhật ký.
+
 ## Độ chính xác đã đo
 
 Chưa có số liệu. Bảng này được điền sau kiểm thử tĩnh Phase 2 (5 / 10 / 15 / 20 / 30 m) và kiểm thử đường Phase 4.
