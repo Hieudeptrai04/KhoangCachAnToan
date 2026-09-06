@@ -54,3 +54,22 @@ Size: 8267336
 MD5sum: e3e6d4383256032daa5bff98c25d95a4
 SHA1: 0cb7e7b35d01e5b13ea486d6c17aced791a6966b
 SHA256: 76850969c3c3ed23594e32be717b7fe45228214ba0e4d3ff5bf95cb208ba6644
+
+Package: com.khoangcachantoan.app
+Name: Khoang Cach An Toan
+Version: 0.2.1
+Architecture: iphoneos-arm64
+Description: Do khoang cach toi xe phia truoc bang camera, doi chieu Thong tu 38/2024 (35/55/70/100 m). Chi ho tro lai xe, khong phai bang chung phap ly.
+Maintainer: Hieudeptrai04
+Author: Hieudeptrai04
+Section: Utilities
+Depends: firmware (>= 15.0)
+Icon: https://hieudeptrai04.github.io/KhoangCachAnToan/icon.png
+SileoDepiction: https://hieudeptrai04.github.io/KhoangCachAnToan/depiction.json
+Depiction: https://hieudeptrai04.github.io/KhoangCachAnToan/depiction.html
+Tag: purpose::uikit, compatible::dopamine
+Filename: pool/main/KhoangCachAnToan_0.2.1_iphoneos-arm64.deb
+Size: 8267260
+MD5sum: 788fe1dfa3a7e7c79dcaa97fb879be51
+SHA1: f3bfb4f9b7ae19f8533c91f28317378b1fa55177
+SHA256: 5db55b96063d7e0c332c3f07d1b6e6fc9b60fb757ccc96b5ec7e051051e8b9b7
