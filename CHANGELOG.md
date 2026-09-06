@@ -2,6 +2,17 @@
 
 Định dạng phiên bản: `MAJOR.MINOR.PATCH`. Mỗi bản phát hành có tag `v<ver>-<sha7>` trên GitHub và một file `.deb` trong kho Sileo.
 
+## 0.3.0 — 2026-09-06 (Phase 2: đo khoảng cách)
+
+- **Đo khoảng cách thật**, thay số giả trên HUD. Hai phép đo độc lập chạy song song rồi hợp nhất theo nghịch phương sai: một theo bề rộng xe trong ảnh, một theo vị trí cạnh đáy xe trên mặt đường. Sai số của từng phép được ước lượng từ sai số vị trí cạnh khung bao, quy đổi theo hệ số thu nhỏ của đúng kênh đã phát hiện ra xe đó.
+- Phép đo theo bề rộng chỉ dùng khi tỉ lệ khung bao còn hợp lý cho lớp xe đó, vì xe lệch góc làm khung rộng ra. Phép đo theo mặt đường chỉ dùng khi góc nhìn xuống đủ lớn.
+- Lọc theo thời gian: trung vị 5 mẫu để loại giá trị lạc, rồi bộ lọc Kalman một chiều mô hình vận tốc không đổi. Bộ lọc cũng cho ra tốc độ tiến sát, dùng cho cảnh báo va chạm ở bản sau.
+- Góc chúc camera lấy từ trọng lực, lọc thông thấp. Cách tính không phụ thuộc máy đang nằm ngang chiều nào. Vạch chân trời trên HUD vẽ đúng theo góc này nên dùng để cân máy.
+- Màn cài đặt đầy đủ: chiều cao ống kính, khoảng cách tới đầu xe, hệ số chỉnh tay, nút cân ngang, bề rộng bốn lớp xe, số khung suy luận, hệ số thời tiết xấu, bật tắt vạch hướng dẫn. Có nút đặt hệ số chỉnh tay từ một lần đo bằng thước.
+- Cài đặt lưu thẳng vào plist riêng của app, không dựa vào NSUserDefaults vì app chạy ngoài sandbox.
+- Huy hiệu "cần hiệu chỉnh" khi hai phép đo lệch quá 30 % kéo dài trên 1 giây. Khoảng cách từ 100 m trở lên hiện dấu ngã phía trước để nhắc đây chỉ là ước lượng.
+- Tốc độ và ngưỡng theo luật vẫn chưa có, chờ Phase 3.
+
 ## 0.2.1 — 2026-09-06
 
 - **Sửa lỗi vẽ khung bao bị xoay hai lần.** Buffer giao cho mô hình đã được xoay sẵn theo chiều màn hình, nhưng hàm quy đổi của lớp preview lại nhận toạ độ theo khung chưa xoay và tự xoay thêm một lần nữa. Hậu quả: ở một trong hai chiều ngang, mọi khung bao bị lật đối xứng qua tâm màn hình trong khi hình vẫn hiện đúng, nên rất dễ bỏ sót khi thử. Nay quy đổi bằng phép co giãn thuần, đúng ở cả hai chiều.
