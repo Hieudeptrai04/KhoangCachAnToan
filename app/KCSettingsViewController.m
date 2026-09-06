@@ -2,6 +2,7 @@
 #import "KCSettings.h"
 #import "KCMotion.h"
 #import "KCAlertEngine.h"
+#import "KCTripLogger.h"
 #import "KCLegalRules.h"
 #import "KCLegalViewController.h"
 #import "KCCommon.h"
@@ -176,6 +177,29 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
                setter:^(double v){ s.adverseFactor = v; [weakSelf changed]; }],
     ]];
 
+    // --- Camera ---
+    [self.sectionTitles addObject:@"Camera — đổi xong phải mở lại app"];
+    [self.sections addObject:@[
+        [self toggle:@"Ưu tiên ống kính tele (nhìn xa gấp đôi)"
+              getter:^BOOL{ return s.preferTelephoto; } setter:^(BOOL v){ s.preferTelephoto = v; [weakSelf changed]; }],
+        [self toggle:@"Quay 4K thay vì 1080p (nóng máy hơn)"
+              getter:^BOOL{ return s.use4K; } setter:^(BOOL v){ s.use4K = v; [weakSelf changed]; }],
+    ]];
+
+    // --- Nhật ký chuyến đi ---
+    [self.sectionTitles addObject:@"Nhật ký chuyến đi"];
+    [self.sections addObject:@[
+        [self toggle:@"Ghi tệp CSV mỗi chuyến"
+              getter:^BOOL{ return s.logTripCSV; } setter:^(BOOL v){ s.logTripCSV = v; [weakSelf changed]; }],
+        [self button:@"Các tệp đã ghi"
+              detail:^NSString *{
+                  NSUInteger n = [KCTripLogger existingTripFiles].count;
+                  return n ? [NSString stringWithFormat:@"%lu tệp trong %@", (unsigned long)n, kKCDataDirectory]
+                           : @"chưa có tệp nào";
+              }
+              action:^{ [weakSelf showTripFiles]; }],
+    ]];
+
     // --- Cảnh báo ---
     [self.sectionTitles addObject:@"Cảnh báo khi bám quá gần"];
     [self.sections addObject:@[
@@ -254,6 +278,20 @@ typedef NS_ENUM(NSInteger, KCRowKind) {
     }]];
     [ac addAction:[UIAlertAction actionWithTitle:@"Huỷ" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:ac animated:YES completion:nil];
+}
+
+- (void)showTripFiles {
+    NSArray<NSString *> *files = [KCTripLogger existingTripFiles];
+    NSString *msg;
+    if (files.count == 0) {
+        msg = @"Chưa có tệp nào. Bật “Ghi tệp CSV mỗi chuyến” rồi lái một đoạn.";
+    } else {
+        NSArray *shown = [files subarrayWithRange:NSMakeRange(0, MIN(files.count, 8))];
+        msg = [NSString stringWithFormat:@"Thư mục:\n%@\n\n%@%@",
+               kKCDataDirectory, [shown componentsJoinedByString:@"\n"],
+               files.count > shown.count ? [NSString stringWithFormat:@"\n… và %lu tệp nữa", (unsigned long)(files.count - shown.count)] : @""];
+    }
+    [self toast:msg];
 }
 
 - (void)showLegal {

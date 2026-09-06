@@ -40,6 +40,18 @@
 /// Hiện khung vùng quan tâm của kênh xa.
 @property (nonatomic, assign) BOOL showsFarRegion;
 
+#pragma mark - Camera (FR-8) — đổi xong phải mở lại app
+
+/// Ưu tiên ống kính tele (nhìn xa gấp đôi). Máy không có tele thì tự dùng góc rộng.
+@property (nonatomic, assign) BOOL preferTelephoto;
+/// Quay ở 4K thay vì 1080p. Nóng máy hơn nhiều, mặc định tắt.
+@property (nonatomic, assign) BOOL use4K;
+
+#pragma mark - Nhật ký
+
+/// Ghi nhật ký chuyến đi ra tệp CSV (FR-11).
+@property (nonatomic, assign) BOOL logTripCSV;
+
 #pragma mark - Cảnh báo (FR-4)
 
 @property (nonatomic, assign) BOOL alertBeep;      // tiếng bíp

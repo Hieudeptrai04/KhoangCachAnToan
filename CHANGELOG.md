@@ -2,6 +2,15 @@
 
 Định dạng phiên bản: `MAJOR.MINOR.PATCH`. Mỗi bản phát hành có tag `v<ver>-<sha7>` trên GitHub và một file `.deb` trong kho Sileo.
 
+## 1.0.0 — 2026-09-06 (Phase 4: hoàn thiện)
+
+- **Màn hướng dẫn lần đầu**: ba trang về cách gắn máy, cách cân ngang và giới hạn của ứng dụng, kèm xin quyền camera và vị trí ngay tại đó. Từ lần mở thứ hai vào thẳng màn đo.
+- **Nhật ký chuyến đi ra tệp CSV**: mỗi lần bật tạo một tệp `trip_YYYYMMDD_HHMM.csv` với thời gian, tốc độ, khoảng cách, ngưỡng và trạng thái, ghi hai dòng mỗi giây. Xem danh sách tệp ngay trong cài đặt.
+- **Chọn camera và độ phân giải**: ưu tiên ống kính tele hay góc rộng, quay 1080p hay 4K. Đổi xong cần mở lại app, phần cài đặt ghi rõ điều đó.
+- Bổ sung ghi nhật ký khi app vào nền.
+
+Còn lại trước khi coi là hoàn tất: kiểm thử thực địa trên xe và điền bảng độ chính xác đã đo trong README.
+
 ## 0.4.0 — 2026-09-06 (Phase 3: luật và cảnh báo)
 
 - **Tốc độ từ GPS**, làm mượt 1 giây. Dưới 5 km/h hoặc chưa khoá được GPS thì phần luật bị ẩn, chỉ còn khoảng cách.

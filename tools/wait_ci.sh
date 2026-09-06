@@ -3,7 +3,9 @@
 #   tools/wait_ci.sh            -> theo doi HEAD hien tai
 #   tools/wait_ci.sh <sha7>     -> theo doi commit khac
 set -u
-SHA7="${1:-$(git rev-parse --short=7 HEAD)}"
+# Mac dinh theo doi commit GAN NHAT co dong vao app/, repo/ hoac workflow:
+# commit chi sua tai lieu khong kich hoat build (bo loc paths:), doi no se timeout oan.
+SHA7="${1:-$(git log -1 --format=%h --abbrev=7 -- app repo .github/workflows/build.yml)}"
 VERSION=$(grep '^Version:' app/control | awk '{print $2}')
 echo "waiting for build of $SHA7 (version $VERSION) ..."
 for i in $(seq 1 40); do

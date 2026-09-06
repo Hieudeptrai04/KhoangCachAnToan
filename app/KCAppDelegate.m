@@ -37,4 +37,9 @@ static NSString *KCDeviceModel(void) {
     KCLogf(@"app: resign active");
 }
 
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    // Đẩy nốt phần nhật ký còn trong bộ đệm trước khi hệ thống treo tiến trình.
+    KCLogf(@"app: vao nen");
+}
+
 @end

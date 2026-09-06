@@ -9,6 +9,8 @@
 #import "KCAlertEngine.h"
 #import "KCSettings.h"
 #import "KCSettingsViewController.h"
+#import "KCOnboardingViewController.h"
+#import "KCTripLogger.h"
 #import "KCOverlayView.h"
 #import "KCHUDView.h"
 #import "KCCommon.h"
@@ -24,6 +26,8 @@
 @property (nonatomic, strong) KCMotion *motion;
 @property (nonatomic, strong) KCLocation *location;
 @property (nonatomic, strong) KCAlertEngine *alertEngine;
+@property (nonatomic, strong) KCTripLogger *tripLogger;
+@property (nonatomic, assign) BOOL onboardingHandled;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
 @property (nonatomic, strong) KCOverlayView *overlay;
 @property (nonatomic, strong) KCHUDView *hud;
@@ -66,6 +70,7 @@
 
     self.location = [[KCLocation alloc] init];
     self.alertEngine = [[KCAlertEngine alloc] init];
+    self.tripLogger = [[KCTripLogger alloc] init];
 
     // Nạp bảng luật, tự kiểm tra bảng ngưỡng (mục 10.4), rồi kiểm tra bản mới (tối đa 1 lần / 7 ngày).
     [[KCLegalRules shared] load];
@@ -107,13 +112,33 @@
     [_uiTimer invalidate];
     [_motion stop];
     [_location stop];
+    [_tripLogger stop];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+
+    // Lần mở đầu tiên: 3 slide hướng dẫn và xin quyền, sau đó mới bật camera.
+    // Từ lần thứ hai vào thẳng màn đo.
+    if (!self.onboardingHandled) {
+        self.onboardingHandled = YES;
+        if ([KCOnboardingViewController shouldShow]) {
+            KCOnboardingViewController *vc = [[KCOnboardingViewController alloc] init];
+            vc.modalPresentationStyle = UIModalPresentationFullScreen;
+            __weak typeof(self) weakSelf = self;
+            vc.onFinish = ^{ [weakSelf startEverything]; };
+            [self presentViewController:vc animated:NO completion:nil];
+            return;
+        }
+    }
+    [self startEverything];
+}
+
+- (void)startEverything {
     [self startCameraIfNeeded];
     [self.motion start];
     [self.location start];
+    if ([KCSettings shared].logTripCSV && !self.tripLogger.recording) [self.tripLogger start];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -143,6 +168,8 @@
     self.alertEngine.beepEnabled = s.alertBeep;
     self.alertEngine.hapticEnabled = s.alertHaptic;
     self.alertEngine.speechEnabled = s.alertSpeech;
+    if (s.logTripCSV && !self.tripLogger.recording) [self.tripLogger start];
+    else if (!s.logTripCSV && self.tripLogger.recording) [self.tripLogger stop];
     CGRect roi = self.detector.farRegionOfInterest;
     self.overlay.farRegionTopLeft = CGRectMake(roi.origin.x, 1.0 - (roi.origin.y + roi.size.height),
                                                roi.size.width, roi.size.height);
@@ -206,7 +233,8 @@
     if (self.cameraStarted) return;
     self.cameraStarted = YES;
     NSError *err = nil;
-    if (![self.camera setupPreferTelephoto:YES use4K:NO error:&err]) {
+    KCSettings *cfg = [KCSettings shared];
+    if (![self.camera setupPreferTelephoto:cfg.preferTelephoto use4K:cfg.use4K error:&err]) {
         [self showError:[NSString stringWithFormat:@"Không mở được camera: %@", err.localizedDescription ?: @"?"]];
         return;
     }
@@ -376,6 +404,9 @@
         self.overlay.leaderColor = KCColorGreen();
         [self.hud setThresholdText:speedOK ? @"đang đứng yên" : @"đang chờ GPS"];
         self.lastOverSpeed = NO;
+        [self.tripLogger logSpeedKmh:v speedValid:speedOK
+                            distance:r.distanceMeters distanceValid:haveDistance
+                           threshold:0 status:speedOK ? @"dung_yen" : @"cho_gps"];
         return;
     }
 
@@ -395,6 +426,8 @@
         [self.hud setGapSeconds:0 valid:NO];
         [self.hud setStatus:KCStatusNone];
         self.overlay.leaderColor = KCColorGreen();
+        [self.tripLogger logSpeedKmh:v speedValid:YES distance:0 distanceValid:NO
+                           threshold:t.meters status:@"khong_thay_xe"];
         return;
     }
 
@@ -415,6 +448,10 @@
             KCLogf(@"canh bao: D=%.1f m < nguong %.1f m tai %.0f km/h", d, t.meters, v);
         }
     }
+
+    NSString *statusText = (status == KCStatusRed) ? @"do" : (status == KCStatusYellow ? @"vang" : @"xanh");
+    [self.tripLogger logSpeedKmh:v speedValid:YES distance:d distanceValid:YES
+                       threshold:t.meters status:statusText];
 }
 
 #pragma mark - HUD
