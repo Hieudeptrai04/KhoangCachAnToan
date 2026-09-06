@@ -17,11 +17,11 @@
 |---|---|---|---|
 | 0 | 0.1.1 | Khung xương: CI, kho Sileo, camera preview ngang, ma trận nội tại, HUD số giả | CI xanh, chờ thử máy |
 | 1 | 0.2.0 | Phát hiện xe (YOLOv3-Tiny, 2 kênh suy luận), chọn xe dẫn đầu, bám theo | CI xanh, chờ thử máy |
-| 2 | 0.3.0 | Ước lượng khoảng cách, hiệu chỉnh h / d_front / k / cân ngang | chưa |
+| 2 | 0.3.0 | Ước lượng khoảng cách, hiệu chỉnh h / d_front / k / cân ngang | CI xanh, chờ thử máy |
 | 3 | 0.4.0 | GPS, ngưỡng luật, cảnh báo 3 màu, bíp/rung/giọng, thời tiết xấu, màn Luật | chưa |
 | 4 | 1.0.0 | Onboarding, cài đặt đầy đủ, tiết kiệm pin, CSV, kiểm thử đường | chưa |
 
-Bản 0.2.0 **chưa đo khoảng cách thật**: app đã phát hiện và bám xe phía trước (khung bao trên màn hình), nhưng con số khoảng cách và tốc độ trên HUD vẫn là số giả có nhãn `DEMO`. Đo thật bắt đầu từ Phase 2.
+Bản 0.3.0 đã **đo khoảng cách thật**. Chưa có tốc độ GPS nên chưa tra được ngưỡng theo luật và chưa cảnh báo ba màu; phần đó ở Phase 3.
 
 ## Yêu cầu
 
@@ -146,6 +146,10 @@ app/                Theos application (Objective-C, UIKit thuần, không storyb
   KCDetector         Core ML + Vision, hai kênh suy luận (xa: vùng quan tâm giữa khung; gần: cả khung)
   KCDetection        một xe được phát hiện; toạ độ chuẩn hoá gốc trên-trái dùng chung toàn app
   KCTracker          hành lang làn, chọn xe dẫn đầu, bám theo bằng IoU, chống nhấp nháy
+  KCRangeEstimator   đo theo bề rộng xe và theo mặt đường, hợp nhất, lọc Kalman
+  KCMotion           góc chúc camera từ trọng lực, lọc thông thấp, offset cân ngang
+  KCSettings         cài đặt lưu thẳng vào plist (app không có container)
+  KCSettingsViewController  màn hiệu chỉnh và cài đặt
   KCOverlayView      vẽ khung bao lên preview
   KCHUDView          HUD màn ngang
   KCLog              log.txt xoay vòng 1 MB

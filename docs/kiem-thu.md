@@ -60,6 +60,43 @@ Có thể thử ngay trong nhà: mở một video giao thông trên màn hình m
 
 **Nếu mục 1.3 hoặc 1.9b sai** (khung lệch hẳn, dồn về một góc, hoặc lật đối xứng qua tâm màn hình khi xoay sang chiều ngang kia), chụp màn hình ở **cả hai chiều ngang** và gửi kèm. Đây là chỗ dễ sai nhất vì liên quan tới quy đổi hệ toạ độ giữa mô hình và màn hình. Trong nhật ký có dòng `detector: bbox tho kenh xa = ...` cho biết toạ độ thô, cũng gửi kèm.
 
+## Phase 2 — đo khoảng cách (0.3.0)
+
+### Bước 1: hiệu chỉnh (làm một lần, xe đứng yên)
+
+1. Gắn điện thoại lên kính lái, nằm ngang, giữa kính, cao ngang gương chiếu hậu trong.
+2. Đo bằng thước và nhập vào ⚙:
+   - **Chiều cao ống kính so mặt đường**: từ mặt đường lên tâm ống kính.
+   - **Điện thoại tới đầu xe**: từ vị trí điện thoại tới mép trước cản xe.
+3. Đỗ xe trên mặt phẳng, nhìn thẳng. Bấm **Cân ngang**. Kiểm tra vạch nét đứt trên màn hình trùng với đường chân trời thật.
+
+### Bước 2: đo tĩnh ở bãi xe
+
+Đỗ sau một ô tô, dùng thước dây đo từ **đầu xe mình** tới **đuôi xe trước**.
+
+| Thật (m) | App đọc (m) | Sai số | Ghi chú |
+|---|---|---|---|
+| 5 | | | |
+| 10 | | | |
+| 15 | | | |
+| 20 | | | |
+| 30 | | | |
+
+Sau lượt đầu: ở khoảng 10–20 m, mở ⚙ → **Đặt k từ khoảng cách thật** → nhập số đo bằng thước. Rồi đo lại toàn bộ 5 mốc.
+
+| # | Việc kiểm | Đạt khi | Kết quả |
+|---|---|---|---|
+| 2.1 | Số hiện ra | có số mét thay cho dấu gạch khi có xe trước | |
+| 2.2 | Số không nhảy loạn | thay đổi mượt, không nhảy vọt vài chục mét | |
+| 2.3 | Sai số sau hiệu chỉnh | **≤ 10 %** ở 10–30 m | |
+| 2.4 | Vạch chân trời | trùng chân trời thật khi xe đứng trên mặt phẳng | |
+| 2.5 | Cân ngang lưu được | thoát app rồi mở lại, offset vẫn giữ | |
+| 2.6 | Huy hiệu cần hiệu chỉnh | chỉ xuất hiện khi hai phép đo lệch nhiều, không hiện liên tục lúc bình thường | |
+| 2.7 | Dấu ngã | khi xe rất xa (trên 100 m) số có dấu `~` phía trước | |
+| 2.8 | Mất xe thì xoá số | che camera, sau khoảng 1 giây số về dấu gạch | |
+
+Trong nhật ký có dòng `range: ... D_w=... D_g=... hop=... -> ... m` mỗi khoảng 10 giây. Gửi kèm khi báo cáo: nếu `D_w` và `D_g` lệch nhau nhiều thì vấn đề nằm ở chiều cao ống kính hoặc góc cân ngang, không phải ở hệ số k.
+
 ## Ghi chú khi báo cáo
 
 - Chụp màn hình lúc có xe trong khung.
