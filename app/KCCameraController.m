@@ -183,12 +183,26 @@
             KCLogf(@"camera: THU GO giao ma tran noi tai -> tinh fx tu FOV");
         }
     } else if (self.watchdogStage == 2) {
-        if (conn.isVideoOrientationSupported && conn.videoOrientation != AVCaptureVideoOrientationPortrait) {
-            conn.videoOrientation = AVCaptureVideoOrientationPortrait;
-            self.buffersRotated = NO;
-            KCLogf(@"camera: THU GO xoay buffer (ve Portrait) -> buffersRotated=NO");
-        }
-    } else if (self.watchdogStage >= 3) {
+        // Gán lại delegate: kiểm tra giả thiết output mất tay nhận khung.
+        [self.videoOutput setSampleBufferDelegate:nil queue:NULL];
+        [self.videoOutput setSampleBufferDelegate:self queue:self.frameQueue];
+        KCLogf(@"camera: THU gan lai sample buffer delegate");
+    } else if (self.watchdogStage == 3) {
+        // Bỏ ép định dạng pixel, dùng mặc định của hệ thống.
+        dispatch_async(self.sessionQueue, ^{
+            [self.session beginConfiguration];
+            self.videoOutput.videoSettings = nil;
+            [self.session commitConfiguration];
+            KCLogf(@"camera: THU bo ep dinh dang pixel (dung mac dinh)");
+        });
+    } else if (self.watchdogStage == 4) {
+        // Tắt rồi bật lại phiên.
+        dispatch_async(self.sessionQueue, ^{
+            [self.session stopRunning];
+            [self.session startRunning];
+            KCLogf(@"camera: THU khoi dong lai phien, running=%d", self.session.isRunning);
+        });
+    } else {
         KCLogf(@"camera: VAN KHONG CO KHUNG sau %ld lan thu, dung theo doi", (long)self.watchdogStage);
         [self.watchdog invalidate];
         self.watchdog = nil;

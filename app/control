@@ -1,6 +1,6 @@
 Package: com.khoangcachantoan.app
 Name: Khoang Cach An Toan
-Version: 1.1.0
+Version: 1.1.1
 Architecture: iphoneos-arm64
 Description: Do khoang cach toi xe phia truoc bang camera, doi chieu Thong tu 38/2024 (35/55/70/100 m). Chi ho tro lai xe, khong phai bang chung phap ly.
 Maintainer: Hieudeptrai04
