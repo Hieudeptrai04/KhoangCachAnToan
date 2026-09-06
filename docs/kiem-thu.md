@@ -99,6 +99,42 @@ Sau lượt đầu: ở khoảng 10–20 m, mở ⚙ → **Đặt k từ khoản
 
 Trong nhật ký có dòng `range: ... D_w=... D_g=... hop=... -> ... m` mỗi khoảng 10 giây. Gửi kèm khi báo cáo: nếu `D_w` và `D_g` lệch nhau nhiều thì vấn đề nằm ở chiều cao ống kính hoặc góc cân ngang, không phải ở hệ số k.
 
+## Phase 3 — luật và cảnh báo (0.4.0)
+
+### Trong nhà, không cần lái
+
+| # | Việc kiểm | Cách làm | Đạt khi | Kết quả |
+|---|---|---|---|---|
+| 3.1 | Tự kiểm tra bảng ngưỡng | ⚙ → Tự kiểm tra bảng ngưỡng | báo "tất cả phép thử đều đạt"; trong log mọi dòng `selftest:` là PASS | |
+| 3.2 | Màn Luật | ⚙ → Bảng khoảng cách và mức phạt | thấy đủ 35 / 55 / 70 / 100 m, ba mức phạt, phiên bản số liệu, miễn trừ trách nhiệm | |
+| 3.3 | Nghe thử cảnh báo | ⚙ → Nghe thử | có rung, có tiếng bíp, có giọng đọc "Khoảng cách quá gần" | |
+| 3.4 | Không cắt nhạc | mở nhạc rồi bấm Nghe thử | nhạc chỉ nhỏ đi trong lúc bíp rồi to lại, **không dừng** | |
+| 3.5 | Tắt được giọng đọc | tắt "Giọng đọc" rồi Nghe thử | chỉ còn rung và bíp | |
+| 3.6 | Chưa có GPS | để trong nhà | dòng dưới số ghi "đang chờ GPS", dải đáy không màu | |
+
+### Ngoài đường (người khác cầm máy, không phải người lái)
+
+| # | Việc kiểm | Đạt khi | Kết quả |
+|---|---|---|---|
+| 3.7 | Có tốc độ | góc phải trên hiện số km/h hợp lý so với đồng hồ xe | |
+| 3.8 | Đứng yên | dừng đèn đỏ thì ghi "đang đứng yên", không cảnh báo | |
+| 3.9 | Ngưỡng đúng | chạy 65–75 km/h thì ghi `≥ 55 m (luật)`; trên 85 km/h thì `≥ 70 m` | |
+| 3.10 | Không nhấp nháy ngưỡng | chạy quanh 80 km/h, số ngưỡng không nhảy qua lại liên tục | |
+| 3.11 | Ba màu | bám gần thì dải đáy chuyển vàng rồi đỏ nhấp nháy | |
+| 3.12 | Cảnh báo không dồn dập | khi đỏ liên tục, cảnh báo kêu tối đa 1 lần mỗi 3 giây | |
+| 3.13 | Thời tiết xấu | bấm ☔ thì ngưỡng tăng 1,5 lần, nhãn đổi thành "khuyến nghị (mưa/sương mù)" | |
+| 3.14 | Không báo giả | đường trống, không có xe trước thì không kêu | |
+
+### Kiểm tra cập nhật số liệu từ xa
+
+Sửa `version` trong `app/Resources/legal.json` thành ngày mới hơn rồi đẩy lên; CI tự chép sang kho. Trên máy, xoá mốc thời gian kiểm tra rồi mở lại app hai lần:
+
+```sh
+sudo rm -f /var/mobile/Documents/KhoangCachAnToan/legal.json
+```
+
+Lần mở thứ nhất app tải bản mới về, lần mở thứ hai mới áp dụng. Vào màn Luật xem dòng "Nguồn tệp" đổi thành "tải về" và phiên bản là ngày mới.
+
 ## Ghi chú khi báo cáo
 
 - Chụp màn hình lúc có xe trong khung.
