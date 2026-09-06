@@ -2,7 +2,7 @@
 #import <UIKit/UIKit.h>
 
 // Phiên bản app — tăng đồng bộ với app/control, app/Makefile (PACKAGE_VERSION), Info.plist.
-#define kAppVersion      @"0.2.0"
+#define kAppVersion      @"0.2.1"
 #define kAppBundleID     @"com.khoangcachantoan.app"
 #define kKCDataDirectory @"/var/mobile/Documents/KhoangCachAnToan"
 #define kKCPrefsPath     @"/var/mobile/Library/Preferences/com.khoangcachantoan.app.plist"

@@ -49,6 +49,7 @@ static NSString *const kKCInputIoU = @"iouThreshold";
 @property (nonatomic, assign) CFAbsoluteTime fpsWindowStart;
 @property (nonatomic, assign) CFAbsoluteTime lastSubmitTime;
 @property (nonatomic, assign) BOOL loggedFirstResults;
+@property (nonatomic, assign) BOOL loggedRawFarBox;
 @end
 
 @implementation KCDetector {
@@ -268,6 +269,8 @@ static NSString *const kKCInputIoU = @"iouThreshold";
 
         // Vision trả bbox chuẩn hoá TƯƠNG ĐỐI ROI, gốc DƯỚI-trái.
         // Đưa về toàn khung rồi lật trục y sang gốc TRÊN-trái (quy ước dùng trong app).
+        // Phép "gỡ cắt" tuyến tính này chỉ đúng vì imageCropAndScaleOption = ScaleFill
+        // (ROI được co thẳng vào ô vuông đầu vào của model, không viền đen, không cắt giữa).
         CGRect bb = obs.boundingBox;
         CGFloat x = roi.origin.x + bb.origin.x * roi.size.width;
         CGFloat w = bb.size.width * roi.size.width;
@@ -277,8 +280,21 @@ static NSString *const kKCInputIoU = @"iouThreshold";
 
         if (w <= 0 || h <= 0) continue;
 
+        // Model có thể đoán khung tràn ra ngoài mép -> cắt về trong khung hình.
+        CGRect n = CGRectIntersection(CGRectMake(x, yTopLeft, w, h), CGRectMake(0, 0, 1, 1));
+        if (CGRectIsNull(n) || n.size.width <= 0 || n.size.height <= 0) continue;
+
+        if (far && !self.loggedRawFarBox) {
+            self.loggedRawFarBox = YES;
+            // Bằng chứng để kiểm tra hệ toạ độ: nếu bbox thô nằm ngoài phạm vi ROI
+            // thì nó KHÔNG phải toạ độ toàn khung, tức đúng là tương đối ROI.
+            KCLogf(@"detector: bbox tho kenh xa = (%.3f,%.3f,%.3f,%.3f) -> toan khung (%.3f,%.3f,%.3f,%.3f)",
+                   bb.origin.x, bb.origin.y, bb.size.width, bb.size.height,
+                   n.origin.x, n.origin.y, n.size.width, n.size.height);
+        }
+
         KCDetection *det = [[KCDetection alloc] init];
-        det.nrect = CGRectMake(x, yTopLeft, w, h);
+        det.nrect = n;
         det.label = label;
         det.confidence = conf;
         det.fromFarChannel = far;

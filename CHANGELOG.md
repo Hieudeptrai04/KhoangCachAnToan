@@ -2,6 +2,13 @@
 
 Định dạng phiên bản: `MAJOR.MINOR.PATCH`. Mỗi bản phát hành có tag `v<ver>-<sha7>` trên GitHub và một file `.deb` trong kho Sileo.
 
+## 0.2.1 — 2026-09-06
+
+- **Sửa lỗi vẽ khung bao bị xoay hai lần.** Buffer giao cho mô hình đã được xoay sẵn theo chiều màn hình, nhưng hàm quy đổi của lớp preview lại nhận toạ độ theo khung chưa xoay và tự xoay thêm một lần nữa. Hậu quả: ở một trong hai chiều ngang, mọi khung bao bị lật đối xứng qua tâm màn hình trong khi hình vẫn hiện đúng, nên rất dễ bỏ sót khi thử. Nay quy đổi bằng phép co giãn thuần, đúng ở cả hai chiều.
+- Cắt khung bao về trong khung hình và cắt lớp phủ theo mép view, tránh khung tràn ra ngoài.
+- Ghi ra log toạ độ thô của kênh xa ở lần phát hiện đầu tiên, để kiểm chứng hệ toạ độ ngay trên máy.
+- Ghi chú trong mã về hai ràng buộc dễ phá vỡ: việc xoay buffer ở data output gắn liền với hướng khai báo cho Vision, và cách khớp chiều ngang giữa giao diện với camera.
+
 ## 0.2.0 — 2026-09-06 (Phase 1: phát hiện xe)
 
 - Nạp mô hình YOLOv3-Tiny Int8 từ bundle bằng Core ML, ghi ra log toàn bộ tên đầu vào, đầu ra và danh sách nhãn trước khi dùng, không giả định trước tên nào.

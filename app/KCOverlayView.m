@@ -14,6 +14,8 @@
     if ((self = [super initWithFrame:frame])) {
         self.backgroundColor = [UIColor clearColor];
         self.userInteractionEnabled = NO;
+        // Với resizeAspectFill, một khung bao hợp lệ vẫn có thể rơi ra ngoài mép view -> cắt bớt.
+        self.layer.masksToBounds = YES;
         _leaderColor = KCColorGreen();
 
         _farRegionLayer = [CAShapeLayer layer];

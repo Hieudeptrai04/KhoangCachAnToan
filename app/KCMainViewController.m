@@ -29,6 +29,7 @@
 @property (nonatomic, copy) NSString *lastLeaderText;
 @property (nonatomic, assign) BOOL lastLeaderLost;
 @property (nonatomic, assign) CFAbsoluteTime lastHudTextRefresh;
+@property (nonatomic, assign) CGSize lastBufferSize;
 @end
 
 @implementation KCMainViewController
@@ -112,6 +113,10 @@
 }
 
 - (void)applyOrientation {
+    // Khớp theo TÊN ở đây là đúng, và trùng với khớp theo giá trị số:
+    // UIInterfaceOrientationLandscapeLeft = UIDeviceOrientationLandscapeRight = 4
+    // = AVCaptureVideoOrientationLandscapeLeft; LandscapeRight = 3 ở cả hai kiểu liệt kê.
+    // (Chỗ hay nhầm 180° là khi khớp UIDeviceOrientation với AVCaptureVideoOrientation theo tên.)
     UIInterfaceOrientation io = [self interfaceOrientationNow];
     AVCaptureVideoOrientation vo = (io == UIInterfaceOrientationLandscapeLeft) ? AVCaptureVideoOrientationLandscapeLeft
                                                                               : AVCaptureVideoOrientationLandscapeRight;
@@ -160,14 +165,38 @@
     self.previewLayer.frame = self.view.bounds;
     [self.view.layer insertSublayer:self.previewLayer atIndex:0];
 
-    // Khung bao được vẽ qua đúng phép biến đổi của preview layer (resizeAspectFill).
-    // Tên Objective-C của hàm này là rectForMetadataOutputRectOfInterest:
-    // (trong Swift là layerRectConverted(fromMetadataOutputRect:)).
+    // Quy đổi khung bao sang toạ độ màn hình.
+    //
+    // KHÔNG dùng rectForMetadataOutputRectOfInterest: ở đây. Hàm đó nhận toạ độ theo
+    // khung CHƯA XOAY của thiết bị và tự áp phép xoay của preview. Nhưng buffer đưa cho
+    // Vision ĐÃ được xoay sẵn (videoOrientation đặt trên connection của data output,
+    // xem KCCameraController), nên nrect vốn đã ở hệ hiển thị — dùng hàm đó là xoay hai lần:
+    // ở một trong hai chiều ngang, mọi khung bao bị lật đối xứng qua tâm màn hình
+    // trong khi hình vẫn hiện đúng.
+    //
+    // Vì buffer và ảnh trên preview là cùng một ảnh, phép biến đổi chỉ còn là co giãn
+    // resizeAspectFill cộng lệch tâm, không xoay, và đúng ở cả hai chiều ngang.
     __weak typeof(self) weakSelf = self;
     self.overlay.rectConverter = ^CGRect(CGRect nrect) {
-        AVCaptureVideoPreviewLayer *layer = weakSelf.previewLayer;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return CGRectZero;
+        AVCaptureVideoPreviewLayer *layer = strongSelf.previewLayer;
         if (!layer) return CGRectZero;
-        return [layer rectForMetadataOutputRectOfInterest:nrect];
+
+        CGSize buf = strongSelf.lastBufferSize;
+        CGSize ls = layer.bounds.size;
+        if (buf.width <= 0 || buf.height <= 0 || ls.width <= 0 || ls.height <= 0) return CGRectZero;
+
+        CGFloat s = MAX(ls.width / buf.width, ls.height / buf.height);   // resizeAspectFill
+        CGFloat dw = buf.width * s;
+        CGFloat dh = buf.height * s;
+        CGFloat ox = (ls.width - dw) * 0.5;
+        CGFloat oy = (ls.height - dh) * 0.5;
+
+        return CGRectMake(ox + nrect.origin.x * dw,
+                          oy + nrect.origin.y * dh,
+                          nrect.size.width * dw,
+                          nrect.size.height * dh);
     };
     // Vùng quan tâm kênh xa: đổi từ hệ Vision (gốc dưới-trái) sang quy ước app (gốc trên-trái).
     CGRect roi = self.detector.farRegionOfInterest;
@@ -198,7 +227,10 @@
 #pragma mark - KCCameraFrameDelegate (hàng đợi camera)
 
 - (void)cameraController:(KCCameraController *)controller didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer intrinsics:(KCIntrinsics)intrinsics timestamp:(CMTime)timestamp {
-    // Buffer đã được xoay đúng chiều bởi videoOrientation của connection -> hướng .up cho Vision.
+    // Kích thước buffer dùng cho phép quy đổi khung bao sang toạ độ màn hình.
+    self.lastBufferSize = CGSizeMake(CVPixelBufferGetWidth(pixelBuffer), CVPixelBufferGetHeight(pixelBuffer));
+    // Buffer đã được data output xoay đúng chiều (videoOrientation) -> khai .up cho Vision là đúng sự thật.
+    // Hai điều này đi kèm nhau: bỏ videoOrientation ở data output thì phải đổi luôn hướng ở đây.
     [self.detector submitPixelBuffer:pixelBuffer orientation:kCGImagePropertyOrientationUp];
 }
 

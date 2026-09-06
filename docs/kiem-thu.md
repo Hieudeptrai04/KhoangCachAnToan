@@ -54,10 +54,11 @@ Có thể thử ngay trong nhà: mở một video giao thông trên màn hình m
 | 1.7 | Không nhấp nháy | xem 30 giây | khung dày không nhảy qua lại giữa các xe liên tục | |
 | 1.8 | Mất dấu | che camera 2 giây | hiện huy hiệu "mất dấu" rồi khung biến mất | |
 | 1.9 | Vùng quan tâm | ⚙ → Hiện vùng quan tâm | thấy khung nét đứt ở giữa hình | |
+| 1.9b | **Khung không nhảy khi xoay** | bật vùng quan tâm, xoay máy 180° sang chiều ngang kia | khung nét đứt **đứng yên** tại chỗ; nếu nó tụt xuống khoảng 10 % chiều cao màn hình ở một chiều thì lỗi xoay hai lần đã tái phát | |
 | 1.10 | Tiết kiệm pin | ⚙ → Tiết kiệm pin (10 fps) | số fps giảm còn khoảng 10 | |
 | 1.11 | Ổn định | để chạy 10 phút | không thoát app, máy không nóng bỏng tay | |
 
-**Nếu mục 1.3 sai** (khung lệch hẳn, hoặc dồn về một góc, hoặc lộn ngược theo trục dọc), chụp màn hình và gửi kèm. Đây là chỗ dễ sai nhất vì liên quan tới quy đổi hệ toạ độ giữa mô hình và màn hình.
+**Nếu mục 1.3 hoặc 1.9b sai** (khung lệch hẳn, dồn về một góc, hoặc lật đối xứng qua tâm màn hình khi xoay sang chiều ngang kia), chụp màn hình ở **cả hai chiều ngang** và gửi kèm. Đây là chỗ dễ sai nhất vì liên quan tới quy đổi hệ toạ độ giữa mô hình và màn hình. Trong nhật ký có dòng `detector: bbox tho kenh xa = ...` cho biết toạ độ thô, cũng gửi kèm.
 
 ## Ghi chú khi báo cáo
 

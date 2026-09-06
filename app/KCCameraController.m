@@ -100,6 +100,9 @@
     } else {
         KCLogf(@"camera: intrinsic matrix delivery KHONG ho tro -> tinh tu FOV");
     }
+    // Đặt videoOrientation ở đây khiến data output XOAY THẬT từng buffer trước khi giao.
+    // KCMainViewController dựa vào điều đó: nó khai kCGImagePropertyOrientationUp cho Vision
+    // và quy đổi khung bao bằng phép co giãn thuần. Bỏ dòng này thì phải sửa cả hai chỗ đó.
     if (conn.isVideoOrientationSupported) conn.videoOrientation = self.pendingOrientation;
 
     self.session = session;
