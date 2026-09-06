@@ -1,5 +1,6 @@
 #import "KCCameraController.h"
 #import "KCLog.h"
+#import <UIKit/UIKit.h>
 #import <simd/simd.h>
 #import <math.h>
 
@@ -71,6 +72,9 @@
     self.deviceLabel = label;
 
     AVCaptureSession *session = [[AVCaptureSession alloc] init];
+    // Phiên này chỉ quay hình, không thu tiếng. Để AVFoundation tự cấu hình lại phiên âm
+    // thanh của app là thừa và có thể xung đột với phiên Playback mà bộ cảnh báo đã đặt.
+    session.automaticallyConfiguresApplicationAudioSession = NO;
     [session beginConfiguration];
 
     NSString *preset = AVCaptureSessionPreset1920x1080;
@@ -145,6 +149,13 @@
 #pragma mark - Run
 
 - (void)startRunning {
+    // Chỉ bật khi app đang ở tiền cảnh: bật lúc còn ở nền thì phiên "chạy" nhưng không
+    // bao giờ có khung hình, và cũng không có thông báo lỗi nào để biết.
+    UIApplicationState state = [UIApplication sharedApplication].applicationState;
+    if (state != UIApplicationStateActive) {
+        KCLogf(@"camera: chua bat vi app chua o tien canh (state=%ld), se bat khi quay lai", (long)state);
+        return;
+    }
     dispatch_async(self.sessionQueue, ^{
         if (!self.session || self.session.isRunning) return;
         [self.session startRunning];
@@ -263,7 +274,8 @@
     KCLogf(@"camera: BI NGAT reason=%@", n.userInfo[AVCaptureSessionInterruptionReasonKey]);
 }
 - (void)sessionInterruptionEnded:(NSNotification *)n {
-    KCLogf(@"camera: interruption ended");
+    KCLogf(@"camera: het bi ngat -> bat lai");
+    [self startRunning];
 }
 
 #pragma mark - AVCaptureVideoDataOutputSampleBufferDelegate

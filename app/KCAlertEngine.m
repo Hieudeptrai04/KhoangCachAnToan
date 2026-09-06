@@ -31,7 +31,8 @@ static const float kKCBeepAmplitude = 0.35f;
         _voice = [AVSpeechSynthesisVoice voiceWithLanguage:@"vi-VN"];
         if (!_voice) KCLogf(@"alert: khong co giong vi-VN tren may nay");
         _feedback = [[UINotificationFeedbackGenerator alloc] init];
-        [self prepareAudio];
+        // KHÔNG dựng audio engine ở đây: chạm vào AVAudioSession trước khi camera khởi động
+        // có thể xen vào lúc AVCaptureSession đang thương lượng pipeline. Dựng khi cần dùng.
     }
     return self;
 }
@@ -82,6 +83,7 @@ static const float kKCBeepAmplitude = 0.35f;
 }
 
 - (void)playBeep {
+    if (!self.audioReady) [self prepareAudio];
     if (!self.audioReady) return;
     NSError *err = nil;
     if (![[AVAudioSession sharedInstance] setActive:YES error:&err]) {

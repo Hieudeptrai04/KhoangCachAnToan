@@ -106,9 +106,32 @@ static const double kKCLaneWidthMeters = 3.5;
     [self.hud setStatus:KCStatusNone text:@"Đang chờ GPS"];
 
     self.uiTimer = [NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(uiTick) userInfo:nil repeats:YES];
+
+    // iOS chỉ giao khung hình cho app đang ở TIỀN CẢNH. Nếu phiên được bật lúc app còn ở nền
+    // (ví dụ mở app khi máy đang khoá) thì phiên vẫn báo "đang chạy", kết nối vẫn "hoạt động",
+    // nhưng không có khung nào về và cũng không có thông báo bị ngắt. Vì vậy phải bám theo
+    // trạng thái app: quay ra tiền cảnh thì bật, vào nền thì tắt.
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    [nc addObserver:self selector:@selector(appBecameActive)
+               name:UIApplicationDidBecomeActiveNotification object:nil];
+    [nc addObserver:self selector:@selector(appWillResignActive)
+               name:UIApplicationWillResignActiveNotification object:nil];
+}
+
+- (void)appBecameActive {
+    KCLogf(@"ui: app ra tien canh -> bat lai camera neu can");
+    if (self.cameraStarted) [self.camera startRunning];
+    [self.motion start];
+    [self.location start];
+}
+
+- (void)appWillResignActive {
+    KCLogf(@"ui: app vao nen -> tam dung camera");
+    [self.camera stopRunning];
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_uiTimer invalidate];
     [_motion stop];
     [_location stop];
