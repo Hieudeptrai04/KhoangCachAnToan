@@ -1,22 +1,33 @@
 #import "KCMainViewController.h"
 #import "KCCameraController.h"
+#import "KCDetector.h"
+#import "KCTracker.h"
+#import "KCOverlayView.h"
 #import "KCHUDView.h"
 #import "KCCommon.h"
 #import "KCLog.h"
 #import <AVFoundation/AVFoundation.h>
 #import <math.h>
 
-@interface KCMainViewController () <KCCameraFrameDelegate>
+@interface KCMainViewController () <KCCameraFrameDelegate, KCDetectorDelegate>
 @property (nonatomic, strong) KCCameraController *camera;
+@property (nonatomic, strong) KCDetector *detector;
+@property (nonatomic, strong) KCTracker *tracker;
 @property (nonatomic, strong) AVCaptureVideoPreviewLayer *previewLayer;
+@property (nonatomic, strong) KCOverlayView *overlay;
 @property (nonatomic, strong) KCHUDView *hud;
 @property (nonatomic, strong) UILabel *errorLabel;
 @property (nonatomic, strong) NSTimer *demoTimer;
 @property (nonatomic, assign) double demoT;
 @property (nonatomic, assign) BOOL adverseWeather;
 @property (nonatomic, assign) BOOL cameraStarted;
-@property (nonatomic, assign) NSUInteger frameCounter;
 @property (nonatomic, assign) AVCaptureVideoOrientation currentVideoOrientation;
+
+// Trạng thái phát hiện mới nhất (chỉ đọc/ghi trên main queue).
+@property (nonatomic, assign) NSUInteger lastDetectionCount;
+@property (nonatomic, assign) NSUInteger lastInLaneCount;
+@property (nonatomic, copy) NSString *lastLeaderText;
+@property (nonatomic, assign) BOOL lastLeaderLost;
 @end
 
 @implementation KCMainViewController
@@ -24,17 +35,27 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor blackColor];
+    self.lastLeaderText = @"—";
 
     self.camera = [[KCCameraController alloc] init];
     self.camera.delegate = self;
+
+    self.tracker = [[KCTracker alloc] init];
+
+    self.detector = [[KCDetector alloc] init];
+    self.detector.delegate = self;
+
+    self.overlay = [[KCOverlayView alloc] initWithFrame:self.view.bounds];
+    self.overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:self.overlay];
 
     self.hud = [[KCHUDView alloc] initWithFrame:self.view.bounds];
     self.hud.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.hud];
     [self.hud.weatherButton addTarget:self action:@selector(toggleWeather) forControlEvents:UIControlEventTouchUpInside];
     [self.hud.settingsButton addTarget:self action:@selector(showSettings) forControlEvents:UIControlEventTouchUpInside];
-    [self.hud setBadges:@[@"DEMO", @"GPS…"]];
     [self.hud setThresholdText:@"≥ 55 m (luật)"];
+    self.tracker.horizonY = self.hud.horizonY;
 
     self.errorLabel = [[UILabel alloc] init];
     self.errorLabel.font = [UIFont systemFontOfSize:18 weight:UIFontWeightSemibold];
@@ -44,8 +65,15 @@
     self.errorLabel.hidden = YES;
     [self.view addSubview:self.errorLabel];
 
-    // Phase 0: HUD số giả để kiểm tra bố cục; thay bằng đo thật ở Phase 1–3.
+    [self loadDetector];
+    [self refreshBadges];
+
+    // Phase 1: khoảng cách/tốc độ vẫn là số giả (nhãn DEMO); phát hiện xe là thật.
     self.demoTimer = [NSTimer scheduledTimerWithTimeInterval:0.2 target:self selector:@selector(demoTick) userInfo:nil repeats:YES];
+}
+
+- (void)dealloc {
+    [_demoTimer invalidate];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -57,6 +85,8 @@
     [super viewDidLayoutSubviews];
     self.previewLayer.frame = self.view.bounds;
     self.errorLabel.frame = CGRectInset(self.view.bounds, 60, 120);
+    [self.view bringSubviewToFront:self.overlay];
+    [self.view bringSubviewToFront:self.hud];
     [self applyOrientation];
 }
 
@@ -90,6 +120,7 @@
     [self.camera applyVideoOrientation:vo];
     if (vo != self.currentVideoOrientation) {
         self.currentVideoOrientation = vo;
+        [self.tracker reset];
         KCLogf(@"orientation: interface=%ld -> video=%ld", (long)io, (long)vo);
     }
 }
@@ -127,9 +158,23 @@
     self.previewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
     self.previewLayer.frame = self.view.bounds;
     [self.view.layer insertSublayer:self.previewLayer atIndex:0];
+
+    // Khung bao được vẽ qua đúng phép biến đổi của preview layer (resizeAspectFill).
+    __weak typeof(self) weakSelf = self;
+    self.overlay.rectConverter = ^CGRect(CGRect nrect) {
+        AVCaptureVideoPreviewLayer *layer = weakSelf.previewLayer;
+        if (!layer) return CGRectZero;
+        return [layer layerRectConvertedFromMetadataOutputRect:nrect];
+    };
+    // Vùng quan tâm kênh xa: đổi từ hệ Vision (gốc dưới-trái) sang quy ước app (gốc trên-trái).
+    CGRect roi = self.detector.farRegionOfInterest;
+    self.overlay.farRegionTopLeft = CGRectMake(roi.origin.x, 1.0 - (roi.origin.y + roi.size.height),
+                                               roi.size.width, roi.size.height);
+
     [self applyOrientation];
     [self.camera startRunning];
     KCLogf(@"camera: preview layer added, session start requested (device=%@)", self.camera.deviceLabel);
+    [self refreshBadges];
 }
 
 - (void)showError:(NSString *)msg {
@@ -138,35 +183,84 @@
     self.errorLabel.hidden = NO;
 }
 
+#pragma mark - Detector
+
+- (void)loadDetector {
+    NSError *err = nil;
+    if (![self.detector loadModelWithError:&err]) {
+        KCLogf(@"detector: khong nap duoc model: %@", err.localizedDescription);
+    }
+}
+
 #pragma mark - KCCameraFrameDelegate (hàng đợi camera)
 
 - (void)cameraController:(KCCameraController *)controller didOutputPixelBuffer:(CVPixelBufferRef)pixelBuffer intrinsics:(KCIntrinsics)intrinsics timestamp:(CMTime)timestamp {
-    self.frameCounter += 1;
-    if (self.frameCounter % 15 != 0) return;
-    double fps = controller.measuredFPS;
-    NSString *label = controller.deviceLabel ?: @"?";
-    KCIntrinsics intr = intrinsics;
+    // Buffer đã được xoay đúng chiều bởi videoOrientation của connection -> hướng .up cho Vision.
+    [self.detector submitPixelBuffer:pixelBuffer orientation:kCGImagePropertyOrientationUp];
+}
+
+#pragma mark - KCDetectorDelegate (hàng đợi suy luận)
+
+- (void)detector:(KCDetector *)detector didFindVehicles:(NSArray<KCDetection *> *)detections inferenceTime:(NSTimeInterval)seconds {
+    KCTrackerResult *result = [self.tracker updateWithDetections:detections timestamp:CFAbsoluteTimeGetCurrent()];
+    NSUInteger inLane = 0;
+    for (KCDetection *d in result.detections) if (d.inLane) inLane += 1;
+
     dispatch_async(dispatch_get_main_queue(), ^{
-        [self.hud setDebugText:[NSString stringWithFormat:@"%@ %dx%d  fx=%.0f fy=%.0f cx=%.0f cy=%.0f (%@)  cam %.0f fps",
-                                label, intr.width, intr.height, intr.fx, intr.fy, intr.cx, intr.cy,
-                                intr.fromDelivery ? @"intrinsics" : @"fov", fps]];
+        [self.overlay updateWithDetections:result.detections leader:result.leader leaderLost:result.leaderLost];
+        self.lastDetectionCount = result.detections.count;
+        self.lastInLaneCount = inLane;
+        self.lastLeaderLost = result.leaderLost;
+        if (result.leader) {
+            CGFloat wpx = [result.leader widthPixelsForBufferWidth:self.camera.lastIntrinsics.width];
+            self.lastLeaderText = [NSString stringWithFormat:@"%@ #%ld %.0fpx %@",
+                                   result.leader.label, (long)result.leader.trackID, wpx,
+                                   result.leader.fromFarChannel ? @"xa" : @"gần"];
+        } else {
+            self.lastLeaderText = @"—";
+        }
+        [self refreshDebugText];
+        [self refreshBadges];
     });
 }
 
-#pragma mark - Demo HUD (Phase 0)
+#pragma mark - HUD
+
+- (void)refreshDebugText {
+    KCIntrinsics i = self.camera.lastIntrinsics;
+    [self.hud setDebugText:[NSString stringWithFormat:
+                            @"%@ %d×%d fx=%.0f cy=%.0f · cam %.0f fps · suy luận %.1f fps (%.0f ms) · %lu xe / %lu cùng làn · dẫn đầu: %@",
+                            self.camera.deviceLabel ?: @"?", i.width, i.height, i.fx, i.cy,
+                            self.camera.measuredFPS, self.detector.inferenceFPS,
+                            self.detector.lastInferenceSeconds * 1000,
+                            (unsigned long)self.lastDetectionCount, (unsigned long)self.lastInLaneCount,
+                            self.lastLeaderText]];
+}
+
+- (void)refreshBadges {
+    NSMutableArray<NSString *> *badges = [NSMutableArray arrayWithObject:@"DEMO"];
+    if (!self.detector.ready) [badges addObject:[NSString stringWithFormat:@"model: %@", self.detector.statusText]];
+    else [badges addObject:[NSString stringWithFormat:@"%.0f fps", self.detector.inferenceFPS]];
+    if (self.lastLeaderLost) [badges addObject:@"mất dấu"];
+    [badges addObject:@"GPS…"];
+    [self.hud setBadges:badges];
+}
+
+#pragma mark - Demo HUD (khoảng cách thật ở Phase 2)
 
 - (void)demoTick {
     self.demoT += 0.2;
-    double v = 72.0;                                           // km/h giả
+    double v = 72.0;
     double threshold = 55.0 * (self.adverseWeather ? 1.5 : 1.0);
-    double d = 58.0 + 14.0 * sin(self.demoT / 3.0);            // dao động 44–72 m để thấy đủ 3 màu
+    double d = 58.0 + 14.0 * sin(self.demoT / 3.0);
     [self.hud setDistanceMeters:d valid:YES approximate:NO];
     [self.hud setSpeedKmh:v valid:YES];
     [self.hud setGapSeconds:d / (v / 3.6) valid:YES];
     [self.hud setThresholdText:[NSString stringWithFormat:@"≥ %@ m (%@)", KCFormatNumber(threshold, 0),
                                 self.adverseWeather ? @"khuyến nghị (mưa/sương mù)" : @"luật"]];
-    KCStatus s = (d >= threshold * 1.10) ? KCStatusGreen : (d >= threshold ? KCStatusYellow : KCStatusRed);   // FR-3
+    KCStatus s = (d >= threshold * 1.10) ? KCStatusGreen : (d >= threshold ? KCStatusYellow : KCStatusRed);
     [self.hud setStatus:s];
+    self.overlay.leaderColor = (s == KCStatusRed) ? KCColorRed() : (s == KCStatusYellow ? KCColorYellow() : KCColorGreen());
 }
 
 #pragma mark - Buttons
@@ -180,15 +274,35 @@
 - (void)showSettings {
     KCIntrinsics i = self.camera.lastIntrinsics;
     NSString *msg = [NSString stringWithFormat:
-                     @"Phiên bản %@ (Phase 0 – khung xương)\nCamera: %@ %d×%d\nfx=%.1f fy=%.1f cx=%.1f cy=%.1f (%@)\nCam FPS: %.1f\nLog: %@/log.txt",
-                     kAppVersion, self.camera.deviceLabel ?: @"?", i.width, i.height, i.fx, i.fy, i.cx, i.cy,
-                     i.fromDelivery ? @"intrinsics" : @"FOV", self.camera.measuredFPS, kKCDataDirectory];
+                     @"Phiên bản %@ (Phase 1 – phát hiện xe)\n"
+                     @"Camera: %@ %d×%d, %.0f fps\n"
+                     @"fx=%.1f fy=%.1f cx=%.1f cy=%.1f (%@)\n"
+                     @"Model: %@ · suy luận %.1f fps (%.0f ms)\n"
+                     @"Log: %@/log.txt",
+                     kAppVersion, self.camera.deviceLabel ?: @"?", i.width, i.height, self.camera.measuredFPS,
+                     i.fx, i.fy, i.cx, i.cy, i.fromDelivery ? @"intrinsics" : @"FOV",
+                     self.detector.statusText, self.detector.inferenceFPS, self.detector.lastInferenceSeconds * 1000,
+                     kKCDataDirectory];
     UIAlertController *ac = [UIAlertController alertControllerWithTitle:@"Khoảng Cách An Toàn" message:msg preferredStyle:UIAlertControllerStyleAlert];
     __weak typeof(self) weakSelf = self;
+
     NSString *guideTitle = self.hud.showsGuides ? @"Ẩn vạch hướng dẫn" : @"Hiện vạch hướng dẫn";
     [ac addAction:[UIAlertAction actionWithTitle:guideTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
         weakSelf.hud.showsGuides = !weakSelf.hud.showsGuides;
     }]];
+
+    NSString *roiTitle = self.overlay.showsFarRegion ? @"Ẩn vùng quan tâm (kênh xa)" : @"Hiện vùng quan tâm (kênh xa)";
+    [ac addAction:[UIAlertAction actionWithTitle:roiTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        weakSelf.overlay.showsFarRegion = !weakSelf.overlay.showsFarRegion;
+    }]];
+
+    BOOL saving = (self.detector.maxInferenceFPS <= 10.5);
+    NSString *fpsTitle = saving ? @"Suy luận thường (15 fps)" : @"Tiết kiệm pin (10 fps)";
+    [ac addAction:[UIAlertAction actionWithTitle:fpsTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction *a) {
+        weakSelf.detector.maxInferenceFPS = saving ? 15.0 : 10.0;
+        KCLogf(@"ui: maxInferenceFPS = %.0f", weakSelf.detector.maxInferenceFPS);
+    }]];
+
     [ac addAction:[UIAlertAction actionWithTitle:@"Đóng" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:ac animated:YES completion:nil];
 }

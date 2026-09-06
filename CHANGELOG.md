@@ -2,6 +2,16 @@
 
 Định dạng phiên bản: `MAJOR.MINOR.PATCH`. Mỗi bản phát hành có tag `v<ver>-<sha7>` trên GitHub và một file `.deb` trong kho Sileo.
 
+## 0.2.0 — 2026-09-06 (Phase 1: phát hiện xe)
+
+- Nạp mô hình YOLOv3-Tiny Int8 từ bundle bằng Core ML, ghi ra log toàn bộ tên đầu vào, đầu ra và danh sách nhãn trước khi dùng, không giả định trước tên nào.
+- Hai kênh suy luận: kênh xa đặt vùng quan tâm ở giữa khung nên xe ở xa được phóng to trước khi đưa vào mô hình; kênh gần quét cả khung, chạy một lần trên mỗi ba lần suy luận. Hai kênh gộp bằng loại bỏ trùng lặp theo tỉ lệ giao trên hợp.
+- Lọc theo lớp xe: ô tô, xe tải, xe buýt, xe máy. Nhãn xe máy khớp theo tiền tố nên chạy được với cả `motorbike` lẫn `motorcycle`.
+- Chọn xe dẫn đầu: hình thang hành lang làn, xe cùng làn có cạnh đáy thấp nhất. Đổi mục tiêu chỉ khi ứng viên mới thắng 5 khung liên tiếp. Mất dấu thì giữ khung cũ tối đa 1 giây rồi bỏ.
+- Lớp phủ vẽ khung bao: xe dẫn đầu khung dày đổi màu theo trạng thái, xe khác khung xám mảnh, kèm nhãn và độ tin cậy. Toạ độ quy đổi qua chính phép biến đổi của lớp preview nên khớp với ảnh đang hiển thị.
+- Số khung suy luận mỗi giây hiện trên HUD, chuyển được giữa 15 và 10 khung mỗi giây trong cài đặt. Hiện được vùng quan tâm của kênh xa để kiểm tra khi hiệu chỉnh.
+- Khoảng cách và tốc độ trên HUD vẫn là số giả có nhãn DEMO; đo thật ở Phase 2.
+
 ## 0.1.1 — 2026-09-06
 
 - **Sửa lỗi hiển thị**: bổ sung khoá `UILaunchScreen` vào `Info.plist`. Thiếu khoá này iOS coi app là ứng dụng đời cũ, chạy ở chế độ tương thích: preview camera và HUD bị thu nhỏ, có viền đen hai bên và `safeAreaInsets` bằng 0 trên iPhone X.

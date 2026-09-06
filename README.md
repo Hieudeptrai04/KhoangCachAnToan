@@ -15,13 +15,13 @@
 
 | Phase | Phiên bản | Nội dung | Trạng thái |
 |---|---|---|---|
-| 0 | 0.1.1 | Khung xương: CI, kho Sileo, camera preview ngang, ma trận nội tại, HUD số giả | đang làm |
-| 1 | 0.2.0 | Phát hiện xe (YOLOv3-Tiny, 2 kênh suy luận), chọn xe dẫn đầu, bám theo | chưa |
+| 0 | 0.1.1 | Khung xương: CI, kho Sileo, camera preview ngang, ma trận nội tại, HUD số giả | CI xanh, chờ thử máy |
+| 1 | 0.2.0 | Phát hiện xe (YOLOv3-Tiny, 2 kênh suy luận), chọn xe dẫn đầu, bám theo | CI xanh, chờ thử máy |
 | 2 | 0.3.0 | Ước lượng khoảng cách, hiệu chỉnh h / d_front / k / cân ngang | chưa |
 | 3 | 0.4.0 | GPS, ngưỡng luật, cảnh báo 3 màu, bíp/rung/giọng, thời tiết xấu, màn Luật | chưa |
 | 4 | 1.0.0 | Onboarding, cài đặt đầy đủ, tiết kiệm pin, CSV, kiểm thử đường | chưa |
 
-Bản 0.1.1 **chưa đo thật**: số trên HUD là số giả có nhãn `DEMO` để kiểm tra bố cục và camera.
+Bản 0.2.0 **chưa đo khoảng cách thật**: app đã phát hiện và bám xe phía trước (khung bao trên màn hình), nhưng con số khoảng cách và tốc độ trên HUD vẫn là số giả có nhãn `DEMO`. Đo thật bắt đầu từ Phase 2.
 
 ## Yêu cầu
 
@@ -139,6 +139,10 @@ app/                Theos application (Objective-C, UIKit thuần, không storyb
   KCAppDelegate      cửa sổ, xoay ngang, giữ màn hình sáng
   KCMainViewController  màn đo: preview + HUD (+ detector, estimator từ Phase 1–2)
   KCCameraController AVCaptureSession 1080p, tele → wide, khóa nét vô cực, ma trận nội tại
+  KCDetector         Core ML + Vision, hai kênh suy luận (xa: vùng quan tâm giữa khung; gần: cả khung)
+  KCDetection        một xe được phát hiện; toạ độ chuẩn hoá gốc trên-trái dùng chung toàn app
+  KCTracker          hành lang làn, chọn xe dẫn đầu, bám theo bằng IoU, chống nhấp nháy
+  KCOverlayView      vẽ khung bao lên preview
   KCHUDView          HUD màn ngang
   KCLog              log.txt xoay vòng 1 MB
   Resources/         Info.plist, legal.json, icon; YOLOv3TinyInt8LUT.mlmodelc do CI sinh (không commit)
