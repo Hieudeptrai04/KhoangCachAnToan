@@ -71,6 +71,7 @@
 @property (nonatomic, strong) CAShapeLayer *horizonLayer;
 @property (nonatomic, strong) CAGradientLayer *topShade;
 @property (nonatomic, strong) UIButton *weatherButton;
+@property (nonatomic, strong) UIButton *mapButton;
 @property (nonatomic, strong) UIButton *settingsButton;
 @property (nonatomic, assign) KCStatus status;
 @property (nonatomic, assign) CGFloat cardTopY;
@@ -97,8 +98,10 @@
         [self.layer addSublayer:_horizonLayer];
 
         _weatherButton = [self makeGlassButtonWithSymbol:@"cloud.rain.fill"];
+        _mapButton = [self makeGlassButtonWithSymbol:@"map.fill"];
         _settingsButton = [self makeGlassButtonWithSymbol:@"slider.horizontal.3"];
         [self addSubview:_weatherButton];
+        [self addSubview:_mapButton];
         [self addSubview:_settingsButton];
 
         _badgeStack = [[UIStackView alloc] init];
@@ -208,9 +211,10 @@
     CGFloat top = in.top + 10;
     self.weatherButton.frame = CGRectMake(16, top, 50, 50);
     self.settingsButton.frame = CGRectMake(b.size.width - 16 - 50, top, 50, 50);
+    self.mapButton.frame = CGRectMake(b.size.width - 16 - 50 - 8 - 50, top, 50, 50);
 
     CGSize bs = [self.badgeStack systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
-    CGFloat badgeW = MIN(bs.width, b.size.width - 150);
+    CGFloat badgeW = MIN(bs.width, b.size.width - 210);
     self.badgeStack.frame = CGRectMake(floor((b.size.width - badgeW) / 2), top + 12, badgeW, MAX(bs.height, 24));
 
     // Thẻ đáy

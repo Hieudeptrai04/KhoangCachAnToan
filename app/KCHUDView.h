@@ -12,6 +12,7 @@ typedef NS_ENUM(NSInteger, KCStatus) {
 @interface KCHUDView : UIView
 
 @property (nonatomic, strong, readonly) UIButton *weatherButton;
+@property (nonatomic, strong, readonly) UIButton *mapButton;
 @property (nonatomic, strong, readonly) UIButton *settingsButton;
 
 /// Vạch chân trời (mặc định bật) và vị trí của nó, chuẩn hoá 0–1 theo chiều cao.

@@ -2,6 +2,32 @@
 
 Định dạng phiên bản: `MAJOR.MINOR.PATCH`. Mỗi bản phát hành có tag `v<ver>-<sha7>` trên GitHub và một file `.deb` trong kho Sileo.
 
+## 1.2.0 — 2026-09-07
+
+- **Bản đồ trong app**: nút bản đồ trên HUD mở màn hình MapKit toàn màn, xoay theo hướng xe, hiện tốc độ và sai số vị trí. Camera tự tắt khi sang bản đồ và tự bật lại khi quay về, đỡ tốn pin.
+- Nút bàn giao sang Google Maps ở đúng toạ độ hiện tại. Máy chưa cài Google Maps thì mở bản web.
+- Đổi được giữa bản đồ thường và ảnh vệ tinh.
+
+**Bản đồ này không phải phần mềm dẫn đường.** Không có chỉ đường từng chặng, không tìm địa điểm, không có giao thông thời gian thực, và dữ liệu bản đồ Việt Nam của Apple mỏng hơn Google. Cần dẫn đường thì bấm nút bàn giao.
+
+## 1.1.2 — 2026-09-06
+
+- **Sửa lỗi camera không có hình.** Phiên camera bị bật khi ứng dụng còn ở nền, iOS không giao khung hình cho ứng dụng nền, mà cũng không báo lỗi nào: phiên vẫn ghi là đang chạy, kết nối vẫn hoạt động, không khung nào bị bỏ. Nay chỉ bật khi ứng dụng thật sự ở tiền cảnh, tự bật lại khi quay ra và khi hết bị ngắt.
+- Phiên camera không còn tự cấu hình lại phiên âm thanh của ứng dụng; bộ cảnh báo chỉ dựng âm thanh khi lần đầu cần phát.
+
+## 1.1.1 — 2026-09-06
+
+- Đặt định danh chữ ký của mã máy bằng chính bundle id. Trước đó công cụ ký tự sinh tên dạng `KhoangCachAnToan.<mã>.unsigned`.
+- Bộ theo dõi khung hình thử thêm ba bước khi camera im lặng: gán lại nơi nhận khung, bỏ ép định dạng điểm ảnh, khởi động lại phiên.
+
+## 1.1.0 — 2026-09-06
+
+- **Chuyển sang màn hình dọc** và làm lại toàn bộ giao diện.
+- Thảm khoảng cách theo phối cảnh trải trên mặt đường giữa xe mình và xe trước, các dải đổi màu đỏ, vàng, xanh theo ngưỡng và mờ dần về phía xa.
+- Nhãn cự ly bám trên nóc xe dẫn đầu; khung bao xe dẫn đầu có quầng sáng theo màu trạng thái.
+- Thẻ kính mờ ở đáy: tốc độ cỡ lớn, nhãn trạng thái, và sáu ô số liệu có biểu tượng gồm tốc độ, khoảng cách, thời gian, thời gian tới va chạm, số khung suy luận và ngưỡng luật.
+- Bộ theo dõi khung hình trong bộ điều khiển camera, ghi lại toàn bộ trạng thái khi không có hình.
+
 ## 1.0.0 — 2026-09-06 (Phase 4: hoàn thiện)
 
 - **Màn hướng dẫn lần đầu**: ba trang về cách gắn máy, cách cân ngang và giới hạn của ứng dụng, kèm xin quyền camera và vị trí ngay tại đó. Từ lần mở thứ hai vào thẳng màn đo.

@@ -10,6 +10,7 @@
 #import "KCSettings.h"
 #import "KCSettingsViewController.h"
 #import "KCOnboardingViewController.h"
+#import "KCMapViewController.h"
 #import "KCTripLogger.h"
 #import "KCOverlayView.h"
 #import "KCHUDView.h"
@@ -90,6 +91,7 @@ static const double kKCLaneWidthMeters = 3.5;
     self.hud.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:self.hud];
     [self.hud.weatherButton addTarget:self action:@selector(toggleWeather) forControlEvents:UIControlEventTouchUpInside];
+    [self.hud.mapButton addTarget:self action:@selector(showMap) forControlEvents:UIControlEventTouchUpInside];
     [self.hud.settingsButton addTarget:self action:@selector(showSettings) forControlEvents:UIControlEventTouchUpInside];
 
     self.errorLabel = [[UILabel alloc] init];
@@ -517,6 +519,23 @@ static const double kKCLaneWidthMeters = 3.5;
     self.adverseWeather = !self.adverseWeather;
     [self.hud setAdverseWeatherActive:self.adverseWeather];
     KCLogf(@"ui: adverse weather = %d", self.adverseWeather);
+}
+
+/// Chuyển sang bản đồ khi không cần đo. Camera tự tắt lúc app rời tiền cảnh,
+/// và tự bật lại khi quay về màn đo.
+- (void)showMap {
+    KCMapViewController *vc = [[KCMapViewController alloc] init];
+    vc.location = self.location;
+    vc.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self.camera stopRunning];
+    KCLogf(@"ui: chuyen sang ban do, tam dung camera");
+    [self presentViewController:vc animated:YES completion:nil];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    // Quay lại từ bản đồ hoặc cài đặt: bật lại camera.
+    if (self.cameraStarted) [self.camera startRunning];
 }
 
 - (void)showSettings {
