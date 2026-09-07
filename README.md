@@ -85,6 +85,20 @@ Khi đang chạy không cần chạm màn hình: cấu hình trước khi khởi
 
 Quy trình kiểm thử tĩnh: đỗ sau một ô tô ở 5 / 10 / 15 / 20 / 30 m, ghi cặp (thật, app), tính sai số, chỉnh `k`, đo lại. Mục tiêu sai số ≤ 10 % ở 10 – 30 m.
 
+## Bản đồ trong app
+
+Nút bản đồ trên HUD mở màn hình bản đồ toàn màn, xoay theo hướng xe, hiện tốc độ và sai số vị trí. Khi ở bản đồ, camera tạm dừng để đỡ tốn pin; quay về màn đo thì camera bật lại.
+
+**Đây không phải phần mềm dẫn đường và không thay thế Google Maps.** Bản đồ chỉ cho biết mình đang ở đâu. Không có:
+
+- chỉ đường từng chặng và dẫn đường bằng giọng nói
+- tìm kiếm địa điểm, số nhà, tên quán
+- giao thông thời gian thực, cảnh báo tắc đường
+
+Dữ liệu bản đồ dùng nguồn của Apple, ở Việt Nam mỏng hơn Google rõ rệt với đường nhỏ và địa điểm. Vì vậy màn bản đồ có nút **Mở Google Maps** bàn giao thẳng sang Google Maps tại đúng toạ độ hiện tại; máy chưa cài thì mở bản web.
+
+Về độ chính xác vị trí: GPS trên iPhone sai số khoảng 3 – 10 m khi trời quang và trống, kém hơn trong phố hẹp, hầm, dưới cầu vượt. Không có cách nào đạt 100 %.
+
 ## Giới hạn
 
 - **Đơn mắt, không LiDAR**: khoảng cách suy từ bề rộng xe trong ảnh và vị trí cạnh đáy so với mặt đường. Sai số mục tiêu ≤ 10 % ở 10 – 40 m, ≤ 15 % ở 40 – 70 m; từ 100 m trở lên chỉ là ước lượng (hiện `~`).
@@ -157,6 +171,7 @@ app/                Theos application (Objective-C, UIKit thuần, không storyb
   KCAlertEngine      bíp tự tổng hợp, rung, giọng đọc, trộn với nhạc, tối đa 1 lần / 3 s
   KCLegalViewController     màn Luật
   KCOnboardingViewController  ba trang hướng dẫn lần đầu
+  KCMapViewController  bản đồ trong app và nút bàn giao sang Google Maps
   KCTripLogger       nhật ký chuyến đi ra tệp CSV
   KCSettings         cài đặt lưu thẳng vào plist (app không có container)
   KCSettingsViewController  màn hiệu chỉnh và cài đặt

@@ -167,6 +167,17 @@ Người lái tập trung lái. Một người khác cầm máy quan sát, hoặ
 
 Sau khi đo tĩnh xong, điền bảng "Độ chính xác đã đo" trong README với 5 mốc 5 / 10 / 15 / 20 / 30 m và sai số phần trăm.
 
+## Bản đồ (1.2.0)
+
+| # | Việc kiểm | Đạt khi | Kết quả |
+|---|---|---|---|
+| 5.1 | Mở bản đồ | bấm nút bản đồ trên HUD, bản đồ hiện toàn màn | |
+| 5.2 | Thấy vị trí mình | chấm xanh hiện đúng chỗ, bản đồ xoay theo hướng xe | |
+| 5.3 | Tốc độ trên bản đồ | số km/h khớp với màn đo | |
+| 5.4 | Ảnh vệ tinh | nút góc phải trên đổi qua lại được | |
+| 5.5 | Bàn giao Google Maps | bấm Mở Google Maps, Google Maps mở đúng chỗ mình đang đứng | |
+| 5.6 | Quay về đo | bấm dấu nhân, về màn đo, camera chạy lại | |
+
 ## Ghi chú khi báo cáo
 
 - Chụp màn hình lúc có xe trong khung.
